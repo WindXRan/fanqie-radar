@@ -52,11 +52,48 @@ def _load(channel: str, rank: str, top: int | None = None) -> list[dict]:
     return books
 
 
-_SAFE_FIELDS = ("book_id", "title", "author", "category", "reads", "status", "words", "url", "gender", "date")
+_SAFE_FIELDS = ("book_id", "title", "author", "category", "reads", "status", "words", "url", "gender", "date", "cover")
+
+# 可选字数/状态缓存（<data>/meta_cache.json，由用户自备的外部补全工具产出，本仓库不抓取）
+# 格式：{"<book_id>": {"words": 356000, "status": "已完结", "chapters": 158}}
+_META_CACHE: dict | None = None
+_META_CACHE_MTIME = 0.0
+
+
+def _meta_cache() -> dict:
+    """读 meta_cache.json（带 mtime 热更新，改文件无需重启）。"""
+    global _META_CACHE, _META_CACHE_MTIME
+    import os
+    paths = []
+    for d in S.data_dirs():
+        p = d / "meta_cache.json"
+        if p.is_file():
+            paths.append(p)
+    src = paths[0] if paths else None
+    if src is None:
+        return _META_CACHE or {}
+    try:
+        mt = src.stat().st_mtime
+        if _META_CACHE is None or mt != _META_CACHE_MTIME:
+            _META_CACHE = json.loads(src.read_text(encoding="utf-8"))
+            _META_CACHE_MTIME = mt
+    except Exception:
+        pass
+    return _META_CACHE or {}
 
 
 def _project(b: dict) -> dict:
-    return {k: b.get(k) for k in _SAFE_FIELDS}
+    out = {k: b.get(k) for k in _SAFE_FIELDS}
+    mc = _meta_cache().get(str(b.get("book_id") or ""))
+    if mc:
+        # 快照缺字段时用缓存补（字数/状态）；快照有值不覆盖
+        if not out.get("words") and mc.get("words"):
+            out["words"] = mc["words"]
+        if not out.get("status") and mc.get("status"):
+            out["status"] = mc["status"]
+        if mc.get("chapters"):
+            out["chapters"] = mc["chapters"]
+    return out
 
 
 def _api_meta(q: dict | None = None) -> dict:

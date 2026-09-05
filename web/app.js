@@ -22,6 +22,12 @@ async function api(path, params = {}) {
   const r = await fetch(`/api/${path}?${qs}`);
   return r.json();
 }
+function coverHTML(b, cls) {
+  const url = b.cover || "";
+  return `<div class="cover ${cls}">` +
+    (url ? `<img src="${esc(url)}" loading="lazy" alt="" onerror="this.parentNode.classList.add('noimg')">` : `<span class="ph">无封面</span>`) +
+    `<span class="ph">无封面</span></div>`;
+}
 function ring(score) {
   const r = 24, c = 2 * Math.PI * r, off = c * (1 - score / 100);
   return `<svg class="ring" viewBox="0 0 56 56">
@@ -82,6 +88,7 @@ async function render() {
   document.getElementById("scoreList").innerHTML = top.length
     ? top.map(b => `
       <div class="score-card">
+        ${coverHTML(b, "sm")}
         ${ring(b.score)}
         <div class="sc-body">
           <div class="sc-title lnk" data-bid="${esc(b.book_id || "")}" title="${esc(b.title)}">${esc(b.title)}</div>
@@ -122,7 +129,7 @@ async function render() {
   document.getElementById("tblBody").innerHTML = rows.length
     ? rows.map(b => {
         const sc = b.book_id && smap[b.book_id] != null ? smap[b.book_id] : "—";
-        return `<tr><td class="lnk" data-bid="${esc(b.book_id || "")}">${esc(b.title)}</td><td>${esc(b.author || "—")}</td><td>${esc(b.category || "—")}</td>
+        return `<tr><td>${coverHTML(b, "tbl")}</td><td class="lnk" data-bid="${esc(b.book_id || "")}">${esc(b.title)}</td><td>${esc(b.author || "—")}</td><td>${esc(b.category || "—")}</td>
           <td>${fmtReads(b.reads)}</td>
           <td>${fmtWords(b.words)}</td><td>${sc}</td></tr>`;
       }).join("")
@@ -155,6 +162,7 @@ async function openBook(bid) {
     if (!d.available) return;
     const m = d.item;
     document.getElementById("mTitle").textContent = m.title || "未知";
+    document.getElementById("mCover").innerHTML = coverHTML(m, "lg");
     document.getElementById("mMeta").innerHTML =
       `<span><b>${esc(m.author || "—")}</b></span><span>${esc(m.category || "—")}</span>` +
       `<span>在读 ${fmtReads(m.reads)}</span>` +
