@@ -285,3 +285,30 @@ a.ad-title:hover { color: var(--pink-text); }
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
   html { scroll-behavior: auto; }
 }
+
+/* ── 扫榜按钮 ── */
+.scrape-btn { padding: 7px 14px; border-radius: 10px; border: 1px solid rgba(167,139,250,.35); background: linear-gradient(135deg, rgba(167,139,250,.12), rgba(244,114,182,.08)); color: var(--text); font-size: 13px; font-weight: 600; cursor: pointer; transition: .18s; white-space: nowrap; }
+.scrape-btn:hover { border-color: var(--accent); background: linear-gradient(135deg, rgba(167,139,250,.22), rgba(244,114,182,.14)); }
+
+/* ── 扫榜弹窗 ── */
+.scrape-modal { width: min(560px, 92vw); }
+.scrape-modal h2 { font-size: 20px; font-weight: 800; margin-bottom: 6px; }
+.scrape-desc { font-size: 13px; color: var(--text-dim); margin-bottom: 20px; }
+.scrape-opts { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+.scrape-opts label { font-size: 12px; color: var(--text-dim); display: flex; flex-direction: column; gap: 4px; }
+.scrape-opts select, .scrape-opts input { background: rgba(255,255,255,.04); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 6px 10px; font-size: 13px; outline: none; }
+.scrape-opts select:focus, .scrape-opts input:focus { border-color: var(--accent); }
+.scrape-big-btn { width: 100%; padding: 14px; border-radius: 12px; border: 0; background: var(--grad); color: #0a0e17; font-size: 15px; font-weight: 800; cursor: pointer; transition: .15s; }
+.scrape-big-btn:hover { filter: brightness(1.12); }
+.scrape-big-btn:disabled { opacity: .55; cursor: default; }
+.scrape-progress { margin-top: 16px; }
+.scrape-progress-bar { height: 4px; background: rgba(255,255,255,.06); border-radius: 2px; overflow: hidden; margin-bottom: 10px; }
+.scrape-progress-fill { height: 100%; width: 0; background: var(--grad); border-radius: 2px; transition: width .3s; }
+.scrape-progress-fill.indeterminate { animation: scrape-indet 1.5s ease-in-out infinite; }
+@keyframes scrape-indet { 0% { width: 0; margin-left: 0 } 50% { width: 40%; margin-left: 30% } 100% { width: 0; margin-left: 100% } }
+.scrape-logs { max-height: 240px; overflow-y: auto; background: rgba(0,0,0,.25); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; font-family: "Cascadia Code", "Fira Code", monospace; font-size: 12px; line-height: 1.7; }
+.scrape-log-line { color: var(--text-dim); }
+.scrape-log-ok { color: var(--good); }
+.scrape-log-err { color: var(--bad); }
+.scrape-err { color: var(--bad); font-size: 13px; padding: 8px 0; }
+.scrape-note { font-size: 12px; color: var(--text-faint); line-height: 1.7; padding-top: 12px; margin-top: 14px; border-top: 1px solid var(--border); }
