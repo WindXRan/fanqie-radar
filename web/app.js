@@ -14,6 +14,7 @@ function fmtReads(n) {
 }
 function fmtWords(n) {
   n = Number(n) || 0;
+  if (!n) return "—";
   return n >= 1e4 ? (n / 1e4).toFixed(1) + "万" : String(n);
 }
 async function api(path, params = {}) {
@@ -31,7 +32,7 @@ function ring(score) {
 function dimsHTML(b) {
   const bd = b.breakdown || {};
   return `<div class="dims">` + Object.keys(DIM_LABELS).map(k => {
-    const v = Number(bd[k] || 0);
+    const v = Math.min(100, Number(bd[k] || 0));
     return `<div class="dim"><span class="dl">${DIM_LABELS[k]}</span><span class="dt"><span class="df" style="width:${v}%"></span></span></div>`;
   }).join("") + `</div>`;
 }

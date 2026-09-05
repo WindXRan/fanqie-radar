@@ -118,7 +118,7 @@ header.top {
 .dim { display: flex; align-items: center; gap: 5px; font-size: 10px; color: var(--text-faint); }
 .dim .dl { width: 30px; flex-shrink: 0; }
 .dim .dt { flex: 1; height: 4px; background: rgba(255,255,255,.07); border-radius: 3px; overflow: hidden; }
-.dim .df { height: 100%; background: var(--accent); border-radius: 3px; }
+.dim .df { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
 .tags { display: flex; gap: 6px; margin-top: 7px; flex-wrap: wrap; }
 .tag { font-size: 10.5px; padding: 2px 8px; border-radius: 999px; background: rgba(167,139,250,.16); color: #c4b5fd; border: 1px solid rgba(167,139,250,.25); }
 .tag.gf { background: rgba(244,114,182,.14); color: #f9a8d4; border-color: rgba(244,114,182,.25); }
