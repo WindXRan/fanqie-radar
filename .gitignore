@@ -1,8 +1,9 @@
-# 数据快照：含第三方平台版权内容（书名/作者/简介/封面），绝不入库
+# 运行时数据（用户采集的快照，不入库）
 data/
 *.json
 !pyproject.toml
 !examples/sample_data/*.json
+!src/fanqie_index/sample_data/*.json
 
 # Python
 __pycache__/

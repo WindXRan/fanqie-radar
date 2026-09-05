@@ -380,11 +380,8 @@ const scrapeProgress = document.getElementById("scrapeProgress");
 const scrapeLogs = document.getElementById("scrapeLogs");
 const scrapeRunBtn = document.getElementById("scrapeRun");
 const scrapeStopBtn = document.getElementById("scrapeStop");
-const installBtn = document.getElementById("installBtn");
 const installStatus = document.getElementById("installStatus");
-const installLogs = document.getElementById("installLogs");
 let _scrapePoll = null;
-let _installPoll = null;
 
 document.getElementById("scrapeBtn").addEventListener("click", () => {
   scrapeMask.hidden = false;
@@ -393,62 +390,21 @@ document.getElementById("scrapeBtn").addEventListener("click", () => {
 document.getElementById("scrapeClose").addEventListener("click", () => scrapeMask.hidden = true);
 scrapeMask.addEventListener("click", e => { if (e.target === scrapeMask) scrapeMask.hidden = true; });
 
-/* 检查依赖安装状态 */
+/* 检查依赖状态 */
 async function checkInstallStatus() {
   try {
     const d = await fetch("/api/install/status").then(r => r.json());
     updateInstallUI(d);
-    if (d.running) startInstallPoll();
   } catch (e) { /* 忽略 */ }
 }
 
 function updateInstallUI(d) {
-  const pw = d.playwright, ch = d.chromium;
-  const both = pw && ch;
-  installBtn.disabled = d.running || both;
-  if (d.running) {
-    installBtn.textContent = "安装中…";
-    installStatus.innerHTML = '<span class="inst-running">⏳ 正在安装依赖…</span>';
-  } else if (both) {
-    installBtn.textContent = "✓ 依赖已就绪";
-    installStatus.innerHTML = '<span class="inst-ok">✓ Playwright + Chromium 已就绪</span>';
+  if (d.playwright && d.chromium) {
+    installStatus.innerHTML = '<span class="inst-ok">✓ 零依赖就绪 · HTTP 采集模式 · 无需安装任何东西</span>';
   } else {
-    let parts = [];
-    if (!pw) parts.push("Playwright");
-    if (!ch) parts.push("Chromium");
-    installBtn.textContent = "📦 一键安装依赖";
-    installStatus.innerHTML = `<span class="inst-miss">⚠ 缺少 ${parts.join(" + ")}（采集需要）</span>`;
-  }
-  if (d.logs && d.logs.length) {
-    installLogs.hidden = false;
-    installLogs.innerHTML = d.logs.map(l => {
-      const cls = l.includes("✗") ? "scrape-log-err" : l.includes("✓") ? "scrape-log-ok" : "scrape-log-line";
-      return `<div class="${cls}">${esc(l)}</div>`;
-    }).join("");
+    installStatus.innerHTML = '<span class="inst-miss">⚠ 采集环境异常</span>';
   }
 }
-
-function startInstallPoll() {
-  if (_installPoll) clearInterval(_installPoll);
-  _installPoll = setInterval(async () => {
-    try {
-      const d = await fetch("/api/install/status").then(r => r.json());
-      updateInstallUI(d);
-      if (!d.running) {
-        clearInterval(_installPoll);
-        _installPoll = null;
-      }
-    } catch (e) { /* 忽略 */ }
-  }, 1500);
-}
-
-installBtn.addEventListener("click", async () => {
-  installBtn.disabled = true;
-  try {
-    const r = await fetch("/api/install", { method: "POST" });
-    if (r.ok) startInstallPoll();
-  } catch (e) { /* 忽略 */ }
-});
 
 /* 采集 */
 scrapeRunBtn.addEventListener("click", async () => {

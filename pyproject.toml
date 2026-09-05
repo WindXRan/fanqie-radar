@@ -14,7 +14,6 @@ keywords = ["fanqie", "番茄小说", "番茄", "榜单", "扫榜", "网文", "w
 
 [project.optional-dependencies]
 dev = ["pytest>=7.0"]
-scrape = ["playwright>=1.40"]
 
 [project.scripts]
 fanqie-radar = "fanqie_index.mcp_server:main"

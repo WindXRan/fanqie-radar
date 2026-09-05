@@ -295,8 +295,7 @@ def _scrape_thread(limit, sleep_sec, gender, rank):
 
 
 def _install_thread():
-    """后台安装依赖线程。"""
-    global _BOOK_IDX_BUILT, _BOOK_IDX
+    """后台安装依赖线程（HTTP 采集零依赖，仅做检查）。"""
     try:
         from . import scraper as SCR
 
@@ -308,10 +307,9 @@ def _install_thread():
         with _INSTALL_LOCK:
             _INSTALL_STATE["done"] = True
             if not ok:
-                _INSTALL_STATE["error"] = "安装失败"
-                _INSTALL_STATE["logs"].append("✗ 安装失败，请检查网络或手动运行 pip install playwright && playwright install chromium")
+                _INSTALL_STATE["error"] = "检查失败"
             else:
-                _INSTALL_STATE["logs"].append("✓ 依赖安装完成，可以开始采集了")
+                _INSTALL_STATE["logs"].append("✓ 采集环境就绪")
     except Exception as e:
         with _INSTALL_LOCK:
             _INSTALL_STATE["error"] = f"{type(e).__name__}: {e}"
@@ -340,20 +338,14 @@ def _api_scrape_status(q: dict) -> dict:
 
 def _api_install_status(q: dict) -> dict:
     with _INSTALL_LOCK:
-        pw_ok, chrome_ok = (False, False)
-        try:
-            from . import scraper as SCR
-            pw_ok, chrome_ok = SCR.check_dependencies()
-        except Exception:
-            pass
         return {
             "running": _INSTALL_STATE["running"],
             "done": _INSTALL_STATE["done"],
             "logs": list(_INSTALL_STATE["logs"][-30:]),
             "log_count": len(_INSTALL_STATE["logs"]),
             "error": _INSTALL_STATE["error"],
-            "playwright": pw_ok,
-            "chromium": chrome_ok,
+            "playwright": True,
+            "chromium": True,
         }
 
 
