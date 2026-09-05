@@ -1,0 +1,18 @@
+# 数据快照：含第三方平台版权内容（书名/作者/简介/封面），绝不入库
+data/
+*.json
+!pyproject.toml
+!examples/sample_data/*.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# 编辑器/系统
+.DS_Store
+.idea/
+.vscode/
