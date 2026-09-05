@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>番茄指数 · Fanqie Index 看板</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <!-- 评分环渐变定义 -->
+  <svg width="0" height="0" style="position:absolute"><defs>
+    <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#a78bfa" /><stop offset="100%" stop-color="#f472b6" />
+    </linearGradient>
+  </defs></svg>
+
+  <div class="wrap">
+    <header class="top">
+      <div class="brand">
+        <div class="logo">📊</div>
+        <div>
+          <h1>番茄指数</h1>
+          <div class="sub">Fanqie Index · 榜单阅读 + 仿写选书评分</div>
+        </div>
+      </div>
+      <div class="controls">
+        <span class="date-badge" id="dateBadge">数据日期 —</span>
+        <div class="seg" id="segChannel">
+          <button data-v="female" class="on">女频</button>
+          <button data-v="male">男频</button>
+        </div>
+        <div class="seg" id="segRank">
+          <button data-v="read" class="on">阅读榜</button>
+          <button data-v="new">新书榜</button>
+        </div>
+      </div>
+    </header>
+
+    <section class="kpis" id="kpis">
+      <div class="skeleton">加载中…</div>
+    </section>
+
+    <section class="grid-main">
+      <div class="card">
+        <h2><span class="dot"></span>题材热度<span class="hint">按在读总量</span></h2>
+        <div id="heatList"><div class="skeleton">加载中…</div></div>
+      </div>
+      <div class="card">
+        <h2><span class="dot"></span>仿写选书评分 Top<span class="hint">六维模型</span></h2>
+        <div class="score-list" id="scoreList"><div class="skeleton">加载中…</div></div>
+      </div>
+    </section>
+
+    <section class="grid-trend">
+      <div class="card trend-col">
+        <h2><span class="dot up"></span>新上榜<span class="hint" id="trendDate"></span></h2>
+        <div id="trendEntered"><div class="skeleton">加载中…</div></div>
+      </div>
+      <div class="card trend-col">
+        <h2><span class="dot dn"></span>掉出榜单</h2>
+        <div id="trendDropped"><div class="skeleton">加载中…</div></div>
+      </div>
+    </section>
+
+    <section class="card" style="margin-bottom:18px">
+      <h2><span class="dot"></span>书名热词<span class="hint">套路词频</span></h2>
+      <div class="cloud" id="hotwords"><div class="skeleton">加载中…</div></div>
+    </section>
+
+    <section class="card">
+      <h2><span class="dot"></span>榜单明细<span class="hint" id="tblCount"></span></h2>
+      <div style="overflow-x:auto">
+        <table class="tbl">
+          <thead><tr><th>书名</th><th>作者</th><th>品类</th><th>在读</th><th>状态</th><th>字数</th><th>评分</th></tr></thead>
+          <tbody id="tblBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="foot">
+      零爬虫 · 零第三方依赖 · 数据由本地快照提供 · <a href="https://github.com/" target="_blank" rel="noopener">开源仓库</a>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

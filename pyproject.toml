@@ -16,6 +16,7 @@ dev = ["pytest>=7.0"]
 
 [project.scripts]
 fanqie-index = "fanqie_index.mcp_server:main"
+fanqie-index-web = "fanqie_index.web:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
