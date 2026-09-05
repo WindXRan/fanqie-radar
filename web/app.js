@@ -179,6 +179,8 @@ const DEFAULT_ADS = [
   { title: "蛙蛙写作 · 能替你「打工」的 AI 写作平台", desc: "写作苦手轻松变身爆款作家：一天 10 篇短篇、3 分钟万字长文；新人注册领 600 蛙币，用邀请码 QD5AXb 叠加得 1800 蛙币创作金手指", url: "https://wawawriter.com/app/?invitationCode=QD5AXb", cta: "去领蛙币 →" },
   { title: "fanqie-radar", desc: "觉得有用？去 GitHub 点个 Star，这是它持续更新的动力", url: "https://github.com/WindXRan/fanqie-radar", cta: "GitHub →" },
 ];
+/* 社群位（img 字段=抽屉内展示二维码，横幅只出文字行） */
+const COMMUNITY = { title: "QQ 交流群 · AI 网文", desc: "AI 网文交流群 1108296223 · 扫码进群，写作/扫榜/仿写搭子都在", img: "/static/qq_group.jpg" };
 async function renderAds() {
   let ads = DEFAULT_ADS;
   try {
@@ -191,8 +193,15 @@ async function renderAds() {
         : `<span class="ad-title">${esc(a.title)}</span>`}
         <div class="ad-desc">${esc(a.desc || "")}</div>
       </div>`).join("");
-  document.getElementById("adBox").innerHTML = `<h2>推广 · ads.json 可自定义</h2>` + html;
-  document.getElementById("adDrawer").innerHTML = `<div class="ad-banner" style="margin-top:0;padding:12px 14px;display:block">${html}</div>`;
+  const comm = ads.find(a => a.img) || COMMUNITY;
+  document.getElementById("adBox").innerHTML = `<h2>推广 · ads.json 可自定义</h2>` + html +
+    `<div class="ad-item"><span class="ad-title">${esc(comm.title)}</span><div class="ad-desc">${esc(comm.desc)}</div></div>`;
+  document.getElementById("adDrawer").innerHTML =
+    `<div class="ad-banner" style="margin-top:0;padding:12px 14px;display:block">${html}</div>` +
+    `<div class="ad-banner" style="margin-top:8px;text-align:center;display:block">
+       <img src="${esc(comm.img)}" alt="${esc(comm.title)}" style="width:190px;border-radius:12px" loading="lazy">
+       <div class="ad-desc" style="margin-top:6px">${esc(comm.desc)}</div>
+     </div>`;
 }
 
 /* ── 抽屉 ── */
