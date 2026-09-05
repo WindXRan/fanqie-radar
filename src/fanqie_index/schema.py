@@ -224,8 +224,16 @@ def find(query: str, limit: int = 20,
 
 
 def stats(dirs: list[Path] | None = None) -> dict:
+    """数据概览。books 按 book_id 去重（同一本书在多日快照重复在榜只计一次，
+    否则跨天累计行数会虚高数倍）；books_rows 保留原始累计行数备查。"""
     files = snapshot_files(dirs)
-    books = sum(len(load_books(f)) for f in files)
-    with_id = sum(1 for f in files for b in load_books(f) if b["book_id"])
-    return {"snapshots": len(files), "books": books, "with_book_id": with_id,
+    ids: set[str] = set()
+    rows = 0
+    for f in files:
+        for b in load_books(f):
+            rows += 1
+            if b["book_id"]:
+                ids.add(b["book_id"])
+    return {"snapshots": len(files), "books": len(ids), "books_rows": rows,
+            "with_book_id": len(ids),
             "dirs": [str(d) for d in (dirs or data_dirs()) if d.is_dir()]}

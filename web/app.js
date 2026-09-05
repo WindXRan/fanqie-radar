@@ -83,6 +83,9 @@ async function renderGrid() {
   if (state.min_reads) params.min_reads = state.min_reads;
   if (state.trope) params.trope = state.trope;
   const d = await api("books", params);
+  // 候选书名索引：网格见过的书全量入索引（跨频道/榜单累积）
+  (window._candIndex ||= {});
+  d.items.forEach(b => { if (b.book_id) window._candIndex[b.book_id] = b; });
   const nav = document.getElementById("catNav");
   if (!d.count) {
     box.innerHTML = `<div class="empty" style="padding:40px 0">没有匹配的书，放宽筛选试试</div>`;
@@ -157,9 +160,17 @@ function renderCandidates() {
   n.hidden = !candidates.length;
   n.textContent = candidates.length;
   if (!candidates.length) { box.innerHTML = `<div class="empty">还没有收藏，翻到心动的点 ☆</div>`; return; }
+  // 书名回显：索引缺的异步经 /api/book 全库索引补全（用户看书名，不看 book_id）
+  const missing = candidates.filter(bid => !(window._candIndex || {})[bid]);
+  missing.forEach(async bid => {
+    try {
+      const d = await fetch(`/api/book?book_id=${encodeURIComponent(bid)}`).then(r => r.json());
+      if (d.available) { (window._candIndex ||= {})[bid] = d.item; renderCandidates(); }
+    } catch (e) { /* 查不到就显示 book_id 兜底 */ }
+  });
   box.innerHTML = candidates.map(bid => {
     const meta = window._candIndex?.[bid] || {};
-    return `<div class="c-item"><span class="c-name lnk" data-bid="${esc(bid)}">${esc(meta.title || bid)}</span><button class="c-x" data-bid="${esc(bid)}">✕</button></div>`;
+    return `<div class="c-item"><span class="c-name lnk" data-bid="${esc(bid)}" title="${esc(meta.title ? meta.title + " · " + bid : bid)}">${esc(meta.title || bid)}</span><button class="c-x" data-bid="${esc(bid)}">✕</button></div>`;
   }).join("");
 }
 
