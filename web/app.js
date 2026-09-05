@@ -153,6 +153,9 @@ async function renderHotwords() {
 
 function renderCandidates() {
   const box = document.getElementById("candBox");
+  const n = document.getElementById("candN");
+  n.hidden = !candidates.length;
+  n.textContent = candidates.length;
   if (!candidates.length) { box.innerHTML = `<div class="empty">还没有收藏，翻到心动的点 ☆</div>`; return; }
   box.innerHTML = candidates.map(bid => {
     const meta = window._candIndex?.[bid] || {};
@@ -171,15 +174,39 @@ async function renderAds() {
     const r = await fetch("/static/ads.json");
     if (r.ok) { const j = await r.json(); if (Array.isArray(j) && j.length) ads = j; }
   } catch (e) { /* 用默认 */ }
-  document.getElementById("adBox").innerHTML =
-    `<h2><span class="dot"></span>推广位<span class="hint">ads.json 可自定义</span></h2>` +
-    ads.filter(a => a.title).map(a => `
+  const html = ads.filter(a => a.title).map(a => `
       <div class="ad-item">${a.url
         ? `<a class="ad-title" href="${esc(a.url)}" target="_blank" rel="noopener">${esc(a.title)} <span class="ad-cta">${esc(a.cta || "→")}</span></a>`
         : `<span class="ad-title">${esc(a.title)}</span>`}
         <div class="ad-desc">${esc(a.desc || "")}</div>
       </div>`).join("");
+  document.getElementById("adBox").innerHTML = `<h2>推广 · ads.json 可自定义</h2>` + html;
+  document.getElementById("adDrawer").innerHTML = `<div class="ad-banner" style="margin-top:0;padding:12px 14px;display:block">${html}</div>`;
 }
+
+/* ── 抽屉 ── */
+const drawer = document.getElementById("drawer");
+const drawerMask = document.getElementById("drawerMask");
+function openDrawer(panel) {
+  switchPanel(panel);
+  drawer.hidden = false; drawerMask.hidden = false;
+  document.querySelectorAll(".dbtn").forEach(b => b.classList.toggle("on", b.dataset.p === panel));
+}
+function closeDrawer() {
+  drawer.hidden = true; drawerMask.hidden = true;
+  document.querySelectorAll(".dbtn").forEach(b => b.classList.remove("on"));
+}
+function switchPanel(p) {
+  document.querySelectorAll(".d-tabs button").forEach(b => b.classList.toggle("on", b.dataset.p === p));
+  document.querySelectorAll(".d-panel").forEach(el => el.hidden = el.id !== "p-" + p);
+}
+document.querySelectorAll(".dbtn").forEach(b => b.addEventListener("click", () => {
+  if (!drawer.hidden && b.classList.contains("on")) closeDrawer();
+  else openDrawer(b.dataset.p);
+}));
+document.querySelectorAll(".d-tabs button").forEach(b => b.addEventListener("click", () => switchPanel(b.dataset.p)));
+document.getElementById("dClose").addEventListener("click", closeDrawer);
+drawerMask.addEventListener("click", closeDrawer);
 
 /* ── 全量刷新 ── */
 async function refresh() {
@@ -307,7 +334,9 @@ document.addEventListener("click", ev => {
   }
   if (ev.target === mask || ev.target.id === "mClose") mask.hidden = true;
 });
-document.addEventListener("keydown", e => { if (e.key === "Escape") mask.hidden = true; });
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") { mask.hidden = true; if (!drawer.hidden) closeDrawer(); }
+});
 
 /* 回到顶部 */
 const toTop = document.getElementById("toTop");

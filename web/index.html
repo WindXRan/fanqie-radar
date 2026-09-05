@@ -4,78 +4,92 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>番茄指数 · 扫榜工作台</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🍅%3C/text%3E%3C/svg%3E" />
   <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
-  <div class="wrap">
-    <header class="top">
-      <div class="brand">
-        <div class="logo">📊</div>
-        <div>
-          <h1>番茄指数</h1>
-          <div class="sub">Fanqie Index · 扫榜工作台</div>
+  <!-- 固定顶栏：品牌/切换 + 筛选工具条 + 快跳条，下滑不掉 -->
+  <div class="topbar">
+    <div class="wrap">
+      <header class="top">
+        <div class="brand">
+          <div class="logo">📊</div>
+          <div>
+            <h1>番茄指数</h1>
+            <div class="sub">Fanqie Index · 扫榜工作台</div>
+          </div>
         </div>
-      </div>
-      <div class="controls">
-        <span class="date-badge" id="dateBadge">数据日期 —</span>
-        <div class="seg" id="segChannel">
-          <button data-v="female" class="on">女频</button>
-          <button data-v="male">男频</button>
+        <div class="controls">
+          <span class="date-badge" id="dateBadge">数据日期 —</span>
+          <div class="seg" id="segChannel">
+            <button data-v="female" class="on">女频</button>
+            <button data-v="male">男频</button>
+          </div>
+          <div class="seg" id="segRank">
+            <button data-v="read" class="on">阅读榜</button>
+            <button data-v="new">新书榜</button>
+          </div>
+          <div class="drawer-btns">
+            <button class="dbtn" data-p="heat" title="题材热度">📊</button>
+            <button class="dbtn" data-p="trend" title="今日动静">⚡</button>
+            <button class="dbtn" data-p="hot" title="书名热词">🔥</button>
+            <button class="dbtn" data-p="cand" title="我的候选">★<span class="dn" id="candN" hidden></span></button>
+          </div>
         </div>
-        <div class="seg" id="segRank">
-          <button data-v="read" class="on">阅读榜</button>
-          <button data-v="new">新书榜</button>
-        </div>
-      </div>
-    </header>
+      </header>
 
-    <!-- 扫榜工具条：搜索 / 品类 / 快筛 / 排序 -->
-    <div class="toolbar">
-      <input id="searchBox" class="search" type="text" placeholder="搜书名 / 作者 / 简介…" />
-      <select id="catSel" class="sel"><option value="">全部品类</option></select>
-      <div class="chips" id="chips">
-        <button class="chip" data-f="status" data-v="done">完结</button>
-        <button class="chip" data-f="status" data-v="serial">连载中</button>
-        <button class="chip" data-f="min_reads" data-v="100000">≥10万在读</button>
-        <button class="chip" data-f="min_reads" data-v="500000">≥50万在读</button>
+      <div class="toolbar">
+        <input id="searchBox" class="search" type="text" placeholder="搜书名 / 作者 / 简介…" />
+        <select id="catSel" class="sel"><option value="">全部品类</option></select>
+        <div class="chips" id="chips">
+          <button class="chip" data-f="status" data-v="done">完结</button>
+          <button class="chip" data-f="status" data-v="serial">连载中</button>
+          <button class="chip" data-f="min_reads" data-v="100000">≥10万在读</button>
+          <button class="chip" data-f="min_reads" data-v="500000">≥50万在读</button>
+        </div>
+        <div class="seg" id="segSort" title="按在读=在读数从高到低；官方名次=番茄官方榜单排名（品类内名次）">
+          <button data-v="reads" class="on">按在读</button>
+          <button data-v="pos">官方名次</button>
+        </div>
       </div>
-      <div class="seg" id="segSort" title="按在读=在读数从高到低；官方名次=番茄官方榜单排名（品类内名次）">
-        <button data-v="reads" class="on">按在读</button>
-        <button data-v="pos">官方名次</button>
-      </div>
+      <div class="active-bar" id="activeBar" hidden></div>
+
+      <div class="cat-nav" id="catNav" hidden></div>
     </div>
-    <div class="active-bar" id="activeBar" hidden></div>
+  </div>
 
-    <section class="workbench">
-      <div class="main-col">
-        <div class="cat-nav" id="catNav" hidden></div>
-        <div id="sections"><div class="skeleton">加载中…</div></div>
-      </div>
-      <aside class="side-col">
-        <div class="card">
-          <h2><span class="dot"></span>题材热度<span class="hint">点击筛选</span></h2>
-          <div id="heatList"><div class="skeleton">加载中…</div></div>
-        </div>
-        <div class="card">
-          <h2><span class="dot"></span>今日动静<span class="hint" id="trendDate"></span></h2>
-          <div id="trendBox"><div class="skeleton">加载中…</div></div>
-        </div>
-        <div class="card">
-          <h2><span class="dot"></span>书名热词<span class="hint">点击看同套路</span></h2>
-          <div class="cloud" id="hotwords"><div class="skeleton">加载中…</div></div>
-        </div>
-        <div class="card">
-          <h2><span class="dot"></span>我的候选<span class="hint">卡片右上 ☆ 收藏</span></h2>
-          <div id="candBox"><div class="empty">还没有收藏，翻到心动的点 ☆</div></div>
-        </div>
-        <div class="ad-card" id="adBox"></div>
-      </aside>
-    </section>
-
+  <!-- 主区：全宽书卡流 -->
+  <div class="wrap">
+    <div id="sections"><div class="skeleton">加载中…</div></div>
+    <div class="ad-banner" id="adBox"></div>
     <div class="foot">
       零爬虫 · 零第三方依赖 · 数据由本地快照提供
     </div>
   </div>
+
+  <!-- 侧栏抽屉（原侧栏四卡收编于此） -->
+  <div class="drawer-mask" id="drawerMask" hidden></div>
+  <aside class="drawer" id="drawer" hidden>
+    <div class="d-head">
+      <div class="d-tabs">
+        <button data-p="heat" class="on">📊 热度</button>
+        <button data-p="trend">⚡ 动静</button>
+        <button data-p="hot">🔥 热词</button>
+        <button data-p="cand">★ 候选</button>
+      </div>
+      <button id="dClose" aria-label="关闭">×</button>
+    </div>
+    <div class="d-body">
+      <div class="d-panel" id="p-heat"><div id="heatList"><div class="skeleton">加载中…</div></div></div>
+      <div class="d-panel" id="p-trend" hidden>
+        <div class="trend-date" id="trendDate"></div>
+        <div id="trendBox"><div class="skeleton">加载中…</div></div>
+      </div>
+      <div class="d-panel" id="p-hot" hidden><div class="cloud" id="hotwords"><div class="skeleton">加载中…</div></div></div>
+      <div class="d-panel" id="p-cand" hidden><div id="candBox"><div class="empty">还没有收藏，翻到心动的点 ☆</div></div></div>
+    </div>
+    <div class="d-ad" id="adDrawer"></div>
+  </aside>
 
   <!-- 单本详情模态 -->
   <div class="modal-mask" id="modalMask" hidden>
