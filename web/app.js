@@ -22,7 +22,7 @@ function coverHTML(b, cls) {
     `<span class="ph">无封面</span></div>`;
 }
 
-/* ── 主网格：书卡 ── */
+/* ── 书卡 ── */
 function badgeHTML(b) {
   let h = "";
   if (b.status) h += b.status.includes("完结")
@@ -46,6 +46,21 @@ function cardHTML(b) {
   </div>`;
 }
 
+/* ── 主网格：品类分组 + 快速跳转（md TOC 感） ── */
+let _catObs = null;
+
+function groupByCat(items) {
+  const order = [], map = {};
+  for (const b of items) {
+    const c = b.category || "未分类";
+    if (!map[c]) { map[c] = []; order.push(c); }
+    map[c].push(b);
+  }
+  return order.map(c => ({ cat: c, books: map[c] }));
+}
+
+function anchorId(cat) { return "sec-" + encodeURIComponent(cat); }
+
 async function renderGrid() {
   const params = { sort: state.sort, top: 300 };
   if (state.q) params.q = state.q;
@@ -54,19 +69,36 @@ async function renderGrid() {
   if (state.min_reads) params.min_reads = state.min_reads;
   if (state.trope) params.trope = state.trope;
   const d = await api("books", params);
-  const grid = document.getElementById("grid");
-  if (!d.count) { grid.innerHTML = `<div class="empty" style="grid-column:1/-1">没有匹配的书，放宽筛选试试</div>`; }
-  else grid.innerHTML = d.items.map(cardHTML).join("");
-  // 激活筛选提示条
-  const bar = document.getElementById("activeBar");
-  const chips = [];
-  if (state.q) chips.push(`<span class="fchip" data-clear="q"><b>搜索</b>${esc(state.q)} ×</span>`);
-  if (state.category) chips.push(`<span class="fchip" data-clear="category"><b>品类</b>${esc(state.category)} ×</span>`);
-  if (state.status) chips.push(`<span class="fchip" data-clear="status"><b>状态</b>${state.status === "done" ? "完结" : "连载中"} ×</span>`);
-  if (state.min_reads) chips.push(`<span class="fchip" data-clear="min_reads"><b>在读</b>≥${fmtReads(state.min_reads)} ×</span>`);
-  if (state.trope) chips.push(`<span class="fchip" data-clear="trope"><b>套路</b>${esc(state.trope)} ×</span>`);
-  bar.hidden = !chips.length;
-  bar.innerHTML = chips.join("") + (chips.length ? `<span style="font-size:11px;color:var(--text-faint)">${d.count} 本</span>` : "");
+  const box = document.getElementById("sections");
+  const nav = document.getElementById("catNav");
+  if (!d.count) {
+    box.innerHTML = `<div class="empty" style="padding:40px 0">没有匹配的书，放宽筛选试试</div>`;
+    nav.hidden = true; nav.innerHTML = "";
+    return;
+  }
+  const groups = state.category ? [{ cat: d.items[0]?.category || "", books: d.items }] : groupByCat(d.items);
+  // 快跳条
+  nav.hidden = groups.length < 2;
+  nav.innerHTML = groups.map(g =>
+    `<button class="cn-chip" data-target="${anchorId(g.cat)}">${esc(g.cat)}<span>${g.books.length}</span></button>`).join("");
+  // 分组渲染
+  box.innerHTML = groups.map(g => `
+    <div class="cat-sec" id="${anchorId(g.cat)}">
+      <div class="sec-head"><span class="sec-cat">${esc(g.cat)}</span><span class="sec-n">${g.books.length} 本</span></div>
+      <div class="book-grid">${g.books.map(cardHTML).join("")}</div>
+    </div>`).join("");
+  // scroll spy
+  if (_catObs) _catObs.disconnect();
+  _catObs = new IntersectionObserver(entries => {
+    for (const en of entries) {
+      if (en.isIntersecting) {
+        document.querySelectorAll(".cn-chip").forEach(c =>
+          c.classList.toggle("on", c.dataset.target === en.target.id));
+      }
+    }
+  }, { rootMargin: "-70px 0px -70% 0px" });
+  groups.forEach(g => { const el = document.getElementById(anchorId(g.cat)); if (el) _catObs.observe(el); });
+  renderCandidates();
 }
 
 /* ── 侧栏 ── */
@@ -113,6 +145,27 @@ function renderCandidates() {
     const meta = window._candIndex?.[bid] || {};
     return `<div class="c-item"><span class="c-name lnk" data-bid="${esc(bid)}">${esc(meta.title || bid)}</span><button class="c-x" data-bid="${esc(bid)}">✕</button></div>`;
   }).join("");
+}
+
+/* ── 广告位（可自定义：放 web/ads.json 即覆盖默认） ── */
+const DEFAULT_ADS = [
+  { title: "fanqie-index-mcp", desc: "觉得有用？去 GitHub 点个 Star，这是它持续更新的动力", url: "https://github.com/your-name/fanqie-index-mcp", cta: "GitHub →" },
+  { title: "方寸写作", desc: "AI 网文仿写管线 · 批量生产番茄/蛙蛙小说的工作流", url: "", cta: "" },
+];
+async function renderAds() {
+  let ads = DEFAULT_ADS;
+  try {
+    const r = await fetch("/static/ads.json");
+    if (r.ok) { const j = await r.json(); if (Array.isArray(j) && j.length) ads = j; }
+  } catch (e) { /* 用默认 */ }
+  document.getElementById("adBox").innerHTML =
+    `<h2><span class="dot"></span>推广位<span class="hint">ads.json 可自定义</span></h2>` +
+    ads.filter(a => a.title).map(a => `
+      <div class="ad-item">${a.url
+        ? `<a class="ad-title" href="${esc(a.url)}" target="_blank" rel="noopener">${esc(a.title)} <span class="ad-cta">${esc(a.cta || "→")}</span></a>`
+        : `<span class="ad-title">${esc(a.title)}</span>`}
+        <div class="ad-desc">${esc(a.desc || "")}</div>
+      </div>`).join("");
 }
 
 /* ── 全量刷新 ── */
@@ -224,6 +277,12 @@ document.addEventListener("click", ev => {
     document.getElementById("catSel").value = cat;
     renderGrid(); renderHeat(); return;
   }
+  const cn = ev.target.closest(".cn-chip");
+  if (cn) {
+    const el = document.getElementById(cn.dataset.target);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
   const fc = ev.target.closest(".fchip");
   if (fc) {
     const k = fc.dataset.clear;
@@ -247,4 +306,5 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") mask.hidden 
   } catch (e) { /* 忽略 */ }
   renderCandidates();
   refresh();
+  renderAds();
 })();
