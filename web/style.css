@@ -115,11 +115,15 @@ header.top { display: flex; align-items: center; justify-content: space-between;
 .btitle { font-size: 14px; font-weight: 700; cursor: pointer; padding-right: 24px; transition: .15s; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .btitle:hover { color: var(--accent); }
 .bmeta { font-size: 11.5px; color: var(--text-faint); margin: 3px 0 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.breads { font-size: 16.5px; font-weight: 800; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; display: inline-block; }
-.breads .u { font-size: 10.5px; color: var(--text-faint); font-weight: 500; -webkit-text-fill-color: var(--text-faint); margin-left: 3px; }
-.breads.t1 { background: linear-gradient(135deg, #fde68a, #f59e0b); }
-.breads.t2 { background: var(--grad); }
-.breads.t3 { background: linear-gradient(135deg, #8b98b3, #6b7794); }
+.breads { font-size: 14.5px; font-weight: 800; color: #e2e8f0; display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; letter-spacing: .2px; }
+.breads::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.breads .u { font-size: 10.5px; color: var(--text-faint); font-weight: 500; }
+.breads.t1 { color: #fbbf24; }
+.breads.t1::before { box-shadow: 0 0 7px rgba(251,191,36,.8); }
+.breads.t2 { color: #dbe4f3; }
+.breads.t2::before { background: #7c8db0; }
+.breads.t3 { color: #8b98b3; }
+.breads.t3::before { background: #5b6680; }
 .bbadges { display: flex; gap: 5px; flex-wrap: wrap; margin: 5px 0; }
 .badge { font-size: 10.5px; padding: 2px 8px; border-radius: 999px; }
 .badge.done { background: rgba(52,211,153,.14); color: #6ee7b7; }
