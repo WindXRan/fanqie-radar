@@ -80,3 +80,12 @@ def test_api_find(server):
     st, body = _get(server, "/api/find?q=" + quote("金枝"))
     d = json.loads(body)
     assert d["count"] >= 1
+
+
+def test_api_book(server):
+    st, body = _get(server, "/api/book?book_id=1000000004")
+    d = json.loads(body)
+    assert d["available"] is True
+    assert d["item"]["intro"]  # 看板单本详情带简介全文（仅本地看板，MCP 对外仍不放开）
+    st, body = _get(server, "/api/book?book_id=9999999999")
+    assert json.loads(body)["available"] is False

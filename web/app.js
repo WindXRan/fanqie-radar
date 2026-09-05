@@ -84,8 +84,8 @@ async function render() {
       <div class="score-card">
         ${ring(b.score)}
         <div class="sc-body">
-          <div class="sc-title" title="${esc(b.title)}">${esc(b.title)}</div>
-          <div class="sc-meta"><b>${esc(b.author || "—")}</b> · ${esc(b.category || "—")} · ${b.status === "已完结" ? "完结" : "连载"} · ${fmtWords(b.words)}字</div>
+          <div class="sc-title lnk" data-bid="${esc(b.book_id || "")}" title="${esc(b.title)}">${esc(b.title)}</div>
+          <div class="sc-meta"><b>${esc(b.author || "—")}</b> · ${esc(b.category || "—")}${b.words ? " · " + fmtWords(b.words) + "字" : ""}</div>
           ${dimsHTML(b)}
           ${tagsHTML(b)}
         </div>
@@ -122,10 +122,8 @@ async function render() {
   document.getElementById("tblBody").innerHTML = rows.length
     ? rows.map(b => {
         const sc = b.book_id && smap[b.book_id] != null ? smap[b.book_id] : "—";
-        const stCls = b.status === "已完结" ? "done" : "ing";
-        const stTxt = b.status === "已完结" ? "完结" : "连载";
-        return `<tr><td>${esc(b.title)}</td><td>${esc(b.author || "—")}</td><td>${esc(b.category || "—")}</td>
-          <td>${fmtReads(b.reads)}</td><td><span class="st ${stCls}">${stTxt}</span></td>
+        return `<tr><td class="lnk" data-bid="${esc(b.book_id || "")}">${esc(b.title)}</td><td>${esc(b.author || "—")}</td><td>${esc(b.category || "—")}</td>
+          <td>${fmtReads(b.reads)}</td>
           <td>${fmtWords(b.words)}</td><td>${sc}</td></tr>`;
       }).join("")
     : `<tr><td colspan="7" class="empty">暂无数据</td></tr>`;
@@ -146,3 +144,35 @@ function bindSeg(id, key) {
 bindSeg("segChannel", "channel");
 bindSeg("segRank", "rank");
 render();
+
+/* 单本详情模态（点击书名 → /api/book 按需拉简介） */
+const mask = document.getElementById("modalMask");
+async function openBook(bid) {
+  if (!bid) return;
+  try {
+    const r = await fetch(`/api/book?book_id=${encodeURIComponent(bid)}`);
+    const d = await r.json();
+    if (!d.available) return;
+    const m = d.item;
+    document.getElementById("mTitle").textContent = m.title || "未知";
+    document.getElementById("mMeta").innerHTML =
+      `<span><b>${esc(m.author || "—")}</b></span><span>${esc(m.category || "—")}</span>` +
+      `<span>在读 ${fmtReads(m.reads)}</span>` +
+      (m.words ? `<span>${fmtWords(m.words)}字</span>` : "") +
+      (m.rank_pos ? `<span>榜单第 ${m.rank_pos} 位</span>` : "");
+    const intro = (m.intro || "").trim();
+    const mi = document.getElementById("mIntro");
+    mi.textContent = intro || "（快照中未收录简介）";
+    mi.classList.toggle("empty", !intro);
+    document.getElementById("mFoot").innerHTML =
+      (m.url ? `<a href="${esc(m.url)}" target="_blank" rel="noopener">在番茄打开 ↗</a>` : "") +
+      `<span>book_id: ${esc(m.book_id || bid)}</span>`;
+    mask.hidden = false;
+  } catch (e) { /* 静默：详情失败不打断看板 */ }
+}
+document.addEventListener("click", (ev) => {
+  const t = ev.target.closest(".lnk");
+  if (t && t.dataset.bid) { openBook(t.dataset.bid); return; }
+  if (ev.target === mask || ev.target.id === "mClose") mask.hidden = true;
+});
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") mask.hidden = true; });

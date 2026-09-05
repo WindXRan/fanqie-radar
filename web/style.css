@@ -152,6 +152,24 @@ table.tbl tr:hover td { background: rgba(255,255,255,.03); }
 .st.done { background: rgba(52,211,153,.14); color: #6ee7b7; }
 .st.ing { background: rgba(251,191,36,.14); color: #fcd34d; }
 
+/* 明细表书名可点 */
+td.lnk, .sc-title.lnk { cursor: pointer; }
+td.lnk:hover { color: var(--accent); }
+.sc-title.lnk:hover { color: var(--accent); }
+
+/* 单本详情模态 */
+.modal-mask { position: fixed; inset: 0; z-index: 50; background: rgba(4, 6, 12, .72); backdrop-filter: blur(5px); display: grid; place-items: center; }
+.modal-mask[hidden] { display: none; }
+.modal { position: relative; width: min(660px, 92vw); max-height: 80vh; overflow-y: auto; background: var(--panel-solid); border: 1px solid var(--border-strong); border-radius: 18px; padding: 26px 28px; box-shadow: var(--shadow); }
+.modal h3 { font-size: 18px; font-weight: 800; padding-right: 30px; }
+.m-meta { font-size: 12.5px; color: var(--text-dim); margin: 8px 0 14px; display: flex; flex-wrap: wrap; gap: 8px 16px; }
+.m-intro { font-size: 13.5px; line-height: 1.8; color: var(--text); white-space: pre-wrap; background: rgba(255,255,255,.03); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+.m-intro.empty { color: var(--text-faint); font-style: italic; }
+.m-foot { margin-top: 14px; font-size: 12px; color: var(--text-faint); display: flex; gap: 14px; flex-wrap: wrap; }
+.m-foot a { color: var(--accent-3); text-decoration: none; }
+.m-close { position: absolute; right: 16px; top: 14px; width: 30px; height: 30px; border-radius: 9px; border: 1px solid var(--border); background: rgba(255,255,255,.04); color: var(--text-dim); font-size: 16px; cursor: pointer; transition: .15s; }
+.m-close:hover { color: var(--text); border-color: var(--border-strong); }
+
 .foot { text-align: center; color: var(--text-faint); font-size: 12px; margin-top: 34px; }
 .foot a { color: var(--accent); text-decoration: none; }
 

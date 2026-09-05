@@ -126,6 +126,36 @@ def _api_hotwords(q: dict) -> dict:
     return {"count": len(books), "items": AN.hotwords(books, top=int(q.get("top", 20)))}
 
 
+# 单本详情索引（book_id → 书目，全快照建一次；本地看板专用，MCP 对外投影不放开 intro）
+_BOOK_IDX: dict[str, dict] = {}
+_BOOK_IDX_BUILT = False
+
+
+def _book_index() -> dict[str, dict]:
+    global _BOOK_IDX_BUILT
+    if not _BOOK_IDX_BUILT:
+        for f in S.snapshot_files():  # 文件名升序，新快照覆盖旧快照
+            for b in S.load_books(f):
+                if b["book_id"]:
+                    _BOOK_IDX[b["book_id"]] = b
+        _BOOK_IDX_BUILT = True
+    return _BOOK_IDX
+
+
+def _api_book(q: dict) -> dict:
+    """单本详情（含 intro 简介全文）：看板点击书名时按需拉取。"""
+    bid = (q.get("book_id") or "").strip()
+    if not bid:
+        return {"available": False, "hint": "book_id 必填"}
+    b = _book_index().get(bid)
+    if b is None:
+        return {"available": False, "hint": "未在任何快照中找到该书"}
+    out = _project(b)
+    out["intro"] = b.get("intro") or ""
+    out["rank_pos"] = b.get("rank_pos")
+    return {"available": True, "item": out}
+
+
 _ROUTES = {
     "/api/meta": _api_meta,
     "/api/ranks": _api_ranks,
@@ -134,6 +164,7 @@ _ROUTES = {
     "/api/trend": _api_trend,
     "/api/find": _api_find,
     "/api/hotwords": _api_hotwords,
+    "/api/book": _api_book,
 }
 
 

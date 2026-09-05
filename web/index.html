@@ -71,7 +71,7 @@
       <h2><span class="dot"></span>榜单明细<span class="hint" id="tblCount"></span></h2>
       <div style="overflow-x:auto">
         <table class="tbl">
-          <thead><tr><th>书名</th><th>作者</th><th>品类</th><th>在读</th><th>状态</th><th>字数</th><th>评分</th></tr></thead>
+          <thead><tr><th>书名</th><th>作者</th><th>品类</th><th>在读</th><th>字数</th><th>评分</th></tr></thead>
           <tbody id="tblBody"></tbody>
         </table>
       </div>
@@ -79,6 +79,17 @@
 
     <div class="foot">
       零爬虫 · 零第三方依赖 · 数据由本地快照提供 · <a href="https://github.com/" target="_blank" rel="noopener">开源仓库</a>
+    </div>
+  </div>
+
+  <!-- 单本详情模态 -->
+  <div class="modal-mask" id="modalMask" hidden>
+    <div class="modal">
+      <button class="m-close" id="mClose" aria-label="关闭">×</button>
+      <h3 id="mTitle"></h3>
+      <div class="m-meta" id="mMeta"></div>
+      <div class="m-intro" id="mIntro"></div>
+      <div class="m-foot" id="mFoot"></div>
     </div>
   </div>
 
