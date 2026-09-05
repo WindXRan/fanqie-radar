@@ -240,12 +240,24 @@ _SCRAPE_STATE = {
     "started_at": 0,
     "finished_at": 0,
     "error": "",
+    "total_cats": 0,
+    "done_cats": 0,
+    "total_books": 0,
 }
 _SCRAPE_LOCK = threading.Lock()
+
+_INSTALL_STATE = {
+    "running": False,
+    "logs": [],
+    "done": False,
+    "error": "",
+}
+_INSTALL_LOCK = threading.Lock()
 
 
 def _scrape_thread(limit, sleep_sec, gender, rank):
     """后台采集线程。"""
+    global _BOOK_IDX_BUILT, _BOOK_IDX
     try:
         from . import scraper as SCR
         SCR._OUTPUT_DIR = Path.cwd() / "data"
@@ -253,6 +265,16 @@ def _scrape_thread(limit, sleep_sec, gender, rank):
         def on_log(msg):
             with _SCRAPE_LOCK:
                 _SCRAPE_STATE["logs"].append(msg)
+                # 解析进度：形如 "(3/19)" 的分类进度
+                import re
+                m = re.search(r"\((\d+)/(\d+)\)", msg)
+                if m:
+                    _SCRAPE_STATE["done_cats"] = int(m.group(1))
+                    _SCRAPE_STATE["total_cats"] = int(m.group(2))
+                # 解析 "xxx: N 本" 的书籍计数
+                m2 = re.search(r"(\d+)\s*本", msg)
+                if m2 and "完成" not in msg:
+                    _SCRAPE_STATE["total_books"] += int(m2.group(1))
 
         SCR.run_scraper(
             limit=limit, sleep_sec=sleep_sec,
@@ -268,19 +290,70 @@ def _scrape_thread(limit, sleep_sec, gender, rank):
             _SCRAPE_STATE["running"] = False
             _SCRAPE_STATE["finished_at"] = time.time()
             # 重建书目索引以加载新数据
-            global _BOOK_IDX_BUILT
+            _BOOK_IDX.clear()
             _BOOK_IDX_BUILT = False
+
+
+def _install_thread():
+    """后台安装依赖线程。"""
+    global _BOOK_IDX_BUILT, _BOOK_IDX
+    try:
+        from . import scraper as SCR
+
+        def on_log(msg):
+            with _INSTALL_LOCK:
+                _INSTALL_STATE["logs"].append(msg)
+
+        ok = SCR.ensure_dependencies(on_log=on_log)
+        with _INSTALL_LOCK:
+            _INSTALL_STATE["done"] = True
+            if not ok:
+                _INSTALL_STATE["error"] = "安装失败"
+                _INSTALL_STATE["logs"].append("✗ 安装失败，请检查网络或手动运行 pip install playwright && playwright install chromium")
+            else:
+                _INSTALL_STATE["logs"].append("✓ 依赖安装完成，可以开始采集了")
+    except Exception as e:
+        with _INSTALL_LOCK:
+            _INSTALL_STATE["error"] = f"{type(e).__name__}: {e}"
+            _INSTALL_STATE["logs"].append(f"✗ 错误: {e}")
+    finally:
+        with _INSTALL_LOCK:
+            _INSTALL_STATE["running"] = False
 
 
 def _api_scrape_status(q: dict) -> dict:
     with _SCRAPE_LOCK:
         return {
             "running": _SCRAPE_STATE["running"],
-            "logs": _SCRAPE_STATE["logs"][-50:],
+            "logs": list(_SCRAPE_STATE["logs"][-80:]),
             "log_count": len(_SCRAPE_STATE["logs"]),
             "started_at": _SCRAPE_STATE["started_at"],
             "finished_at": _SCRAPE_STATE["finished_at"],
             "error": _SCRAPE_STATE["error"],
+            "progress": {
+                "total_cats": _SCRAPE_STATE["total_cats"],
+                "done_cats": _SCRAPE_STATE["done_cats"],
+                "total_books": _SCRAPE_STATE["total_books"],
+            },
+        }
+
+
+def _api_install_status(q: dict) -> dict:
+    with _INSTALL_LOCK:
+        pw_ok, chrome_ok = (False, False)
+        try:
+            from . import scraper as SCR
+            pw_ok, chrome_ok = SCR.check_dependencies()
+        except Exception:
+            pass
+        return {
+            "running": _INSTALL_STATE["running"],
+            "done": _INSTALL_STATE["done"],
+            "logs": list(_INSTALL_STATE["logs"][-30:]),
+            "log_count": len(_INSTALL_STATE["logs"]),
+            "error": _INSTALL_STATE["error"],
+            "playwright": pw_ok,
+            "chromium": chrome_ok,
         }
 
 
@@ -295,6 +368,7 @@ _ROUTES = {
     "/api/book": _api_book,
     "/api/books": _api_books,
     "/api/scrape/status": _api_scrape_status,
+    "/api/install/status": _api_install_status,
 }
 
 
@@ -344,6 +418,9 @@ class Handler(BaseHTTPRequestHandler):
                     _SCRAPE_STATE["error"] = ""
                     _SCRAPE_STATE["started_at"] = time.time()
                     _SCRAPE_STATE["finished_at"] = 0
+                    _SCRAPE_STATE["total_cats"] = 0
+                    _SCRAPE_STATE["done_cats"] = 0
+                    _SCRAPE_STATE["total_books"] = 0
 
                 # 解析请求体
                 body = self.rfile.read(int(self.headers.get("Content-Length", 0)))
@@ -361,6 +438,20 @@ class Handler(BaseHTTPRequestHandler):
                 )
                 t.start()
                 return self._send(200, '{"ok":true,"msg":"采集已启动"}'.encode("utf-8"))
+
+            if path == "/api/install":
+                # 一键安装依赖
+                with _INSTALL_LOCK:
+                    if _INSTALL_STATE["running"]:
+                        return self._send(409, '{"error":"安装进行中"}'.encode("utf-8"))
+                    _INSTALL_STATE["running"] = True
+                    _INSTALL_STATE["logs"] = []
+                    _INSTALL_STATE["done"] = False
+                    _INSTALL_STATE["error"] = ""
+
+                t = threading.Thread(target=_install_thread, daemon=True)
+                t.start()
+                return self._send(200, '{"ok":true,"msg":"安装已启动"}'.encode("utf-8"))
 
             return self._send(404, b'{"error":"not found"}')
         except Exception as e:

@@ -379,12 +379,78 @@ const scrapeMask = document.getElementById("scrapeMask");
 const scrapeProgress = document.getElementById("scrapeProgress");
 const scrapeLogs = document.getElementById("scrapeLogs");
 const scrapeRunBtn = document.getElementById("scrapeRun");
+const scrapeStopBtn = document.getElementById("scrapeStop");
+const installBtn = document.getElementById("installBtn");
+const installStatus = document.getElementById("installStatus");
+const installLogs = document.getElementById("installLogs");
 let _scrapePoll = null;
+let _installPoll = null;
 
-document.getElementById("scrapeBtn").addEventListener("click", () => scrapeMask.hidden = false);
+document.getElementById("scrapeBtn").addEventListener("click", () => {
+  scrapeMask.hidden = false;
+  checkInstallStatus();
+});
 document.getElementById("scrapeClose").addEventListener("click", () => scrapeMask.hidden = true);
 scrapeMask.addEventListener("click", e => { if (e.target === scrapeMask) scrapeMask.hidden = true; });
 
+/* 检查依赖安装状态 */
+async function checkInstallStatus() {
+  try {
+    const d = await fetch("/api/install/status").then(r => r.json());
+    updateInstallUI(d);
+    if (d.running) startInstallPoll();
+  } catch (e) { /* 忽略 */ }
+}
+
+function updateInstallUI(d) {
+  const pw = d.playwright, ch = d.chromium;
+  const both = pw && ch;
+  installBtn.disabled = d.running || both;
+  if (d.running) {
+    installBtn.textContent = "安装中…";
+    installStatus.innerHTML = '<span class="inst-running">⏳ 正在安装依赖…</span>';
+  } else if (both) {
+    installBtn.textContent = "✓ 依赖已就绪";
+    installStatus.innerHTML = '<span class="inst-ok">✓ Playwright + Chromium 已就绪</span>';
+  } else {
+    let parts = [];
+    if (!pw) parts.push("Playwright");
+    if (!ch) parts.push("Chromium");
+    installBtn.textContent = "📦 一键安装依赖";
+    installStatus.innerHTML = `<span class="inst-miss">⚠ 缺少 ${parts.join(" + ")}（采集需要）</span>`;
+  }
+  if (d.logs && d.logs.length) {
+    installLogs.hidden = false;
+    installLogs.innerHTML = d.logs.map(l => {
+      const cls = l.includes("✗") ? "scrape-log-err" : l.includes("✓") ? "scrape-log-ok" : "scrape-log-line";
+      return `<div class="${cls}">${esc(l)}</div>`;
+    }).join("");
+  }
+}
+
+function startInstallPoll() {
+  if (_installPoll) clearInterval(_installPoll);
+  _installPoll = setInterval(async () => {
+    try {
+      const d = await fetch("/api/install/status").then(r => r.json());
+      updateInstallUI(d);
+      if (!d.running) {
+        clearInterval(_installPoll);
+        _installPoll = null;
+      }
+    } catch (e) { /* 忽略 */ }
+  }, 1500);
+}
+
+installBtn.addEventListener("click", async () => {
+  installBtn.disabled = true;
+  try {
+    const r = await fetch("/api/install", { method: "POST" });
+    if (r.ok) startInstallPoll();
+  } catch (e) { /* 忽略 */ }
+});
+
+/* 采集 */
 scrapeRunBtn.addEventListener("click", async () => {
   const gender = document.getElementById("scrapeGender").value;
   const rank = document.getElementById("scrapeRank").value;
@@ -393,6 +459,9 @@ scrapeRunBtn.addEventListener("click", async () => {
 
   scrapeRunBtn.disabled = true;
   scrapeRunBtn.textContent = "采集中…";
+  scrapeStopBtn.hidden = false;
+  document.getElementById("scrapeOpts").style.opacity = "0.5";
+  document.getElementById("scrapeOpts").style.pointerEvents = "none";
   scrapeProgress.hidden = false;
   scrapeLogs.innerHTML = "";
 
@@ -405,26 +474,37 @@ scrapeRunBtn.addEventListener("click", async () => {
     const d = await r.json();
     if (!r.ok) {
       scrapeLogs.innerHTML = `<div class="scrape-err">${esc(d.error || "启动失败")}</div>`;
-      scrapeRunBtn.disabled = false;
-      scrapeRunBtn.textContent = "🚀 开始采集";
+      resetScrapeBtn();
       return;
     }
   } catch (e) {
     scrapeLogs.innerHTML = `<div class="scrape-err">请求失败: ${esc(e.message)}</div>`;
-    scrapeRunBtn.disabled = false;
-    scrapeRunBtn.textContent = "🚀 开始采集";
+    resetScrapeBtn();
     return;
   }
 
   // 轮询进度
   let lastCount = 0;
+  let serverLogCount = 0;
   _scrapePoll = setInterval(async () => {
     try {
       const r = await fetch("/api/scrape/status");
       const d = await r.json();
       const logs = d.logs || [];
-      if (logs.length > lastCount) {
-        const newLogs = logs.slice(lastCount);
+
+      // 处理日志截断：服务器只返回最后 80 条
+      if (d.log_count < serverLogCount) {
+        // 服务器重置了（新采集），清空客户端
+        scrapeLogs.innerHTML = "";
+        lastCount = 0;
+      }
+      serverLogCount = d.log_count;
+
+      // 计算实际偏移（考虑服务器截断）
+      const offset = Math.max(0, lastCount - (serverLogCount - logs.length));
+      const newLogs = logs.slice(offset);
+
+      if (newLogs.length) {
         for (const msg of newLogs) {
           const div = document.createElement("div");
           div.textContent = msg;
@@ -432,20 +512,32 @@ scrapeRunBtn.addEventListener("click", async () => {
           scrapeLogs.appendChild(div);
         }
         scrapeLogs.scrollTop = scrapeLogs.scrollHeight;
-        lastCount = logs.length;
       }
-      // 进度条估算
+      lastCount = d.log_count;
+
+      // 进度条
       const fill = document.getElementById("scrapeProgressFill");
+      const p = d.progress || {};
+      const pctText = document.getElementById("scrapePct");
+
       if (d.running) {
-        fill.style.width = "100%";
-        fill.classList.add("indeterminate");
+        if (p.total_cats > 0 && p.done_cats > 0) {
+          const pct = Math.round((p.done_cats / p.total_cats) * 100);
+          fill.style.width = pct + "%";
+          fill.classList.remove("indeterminate");
+          if (pctText) pctText.textContent = pct + "%" + (p.total_books ? ` · ${p.total_books} 本` : "");
+        } else {
+          fill.style.width = "100%";
+          fill.classList.add("indeterminate");
+          if (pctText) pctText.textContent = "";
+        }
       } else {
         fill.classList.remove("indeterminate");
         fill.style.width = "100%";
+        if (pctText) pctText.textContent = "100%";
         clearInterval(_scrapePoll);
         _scrapePoll = null;
-        scrapeRunBtn.disabled = false;
-        scrapeRunBtn.textContent = "🚀 开始采集";
+        resetScrapeBtn();
         if (d.error) {
           scrapeLogs.appendChild(Object.assign(document.createElement("div"), { textContent: "✗ " + d.error, className: "scrape-log-err" }));
         } else {
@@ -456,6 +548,14 @@ scrapeRunBtn.addEventListener("click", async () => {
     } catch (e) { /* 忽略轮询错误 */ }
   }, 1500);
 });
+
+function resetScrapeBtn() {
+  scrapeRunBtn.disabled = false;
+  scrapeRunBtn.textContent = "🚀 开始采集";
+  scrapeStopBtn.hidden = true;
+  document.getElementById("scrapeOpts").style.opacity = "1";
+  document.getElementById("scrapeOpts").style.pointerEvents = "";
+}
 
 /* 回到顶部 */
 const toTop = document.getElementById("toTop");

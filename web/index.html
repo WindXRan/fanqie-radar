@@ -103,16 +103,29 @@
     <div class="modal scrape-modal">
       <button class="m-close" id="scrapeClose" aria-label="关闭">×</button>
       <h2>🔍 一键扫榜</h2>
-      <p class="scrape-desc">从番茄小说公开榜单采集数据，自动保存到本地。首次运行自动安装依赖。</p>
+      <p class="scrape-desc">从番茄小说公开榜单采集数据，自动保存到本地。</p>
+
+      <!-- 依赖安装区 -->
+      <div class="install-section" id="installSection">
+        <div class="install-status" id="installStatus"></div>
+        <button class="install-btn" id="installBtn">📦 一键安装依赖</button>
+        <div class="install-logs" id="installLogs" hidden></div>
+      </div>
+
+      <div class="scrape-divider"></div>
+
       <div class="scrape-opts" id="scrapeOpts">
         <label>频道 <select id="scrapeGender"><option value="">全部</option><option value="female">女频</option><option value="male">男频</option></select></label>
         <label>榜单 <select id="scrapeRank"><option value="">全部</option><option value="read">阅读榜</option><option value="new">新书榜</option></select></label>
         <label>每分类上限 <input type="number" id="scrapeLimit" value="30" min="5" max="50" /></label>
         <label>间隔(秒) <input type="number" id="scrapeSleep" value="5" min="2" max="20" /></label>
       </div>
-      <button class="scrape-big-btn" id="scrapeRun">🚀 开始采集</button>
+      <div class="scrape-actions">
+        <button class="scrape-big-btn" id="scrapeRun">🚀 开始采集</button>
+        <button class="scrape-stop-btn" id="scrapeStop" hidden>⏹ 停止</button>
+      </div>
       <div class="scrape-progress" id="scrapeProgress" hidden>
-        <div class="scrape-progress-bar"><div class="scrape-progress-fill" id="scrapeProgressFill"></div></div>
+        <div class="scrape-progress-bar"><div class="scrape-progress-fill" id="scrapeProgressFill"></div><span class="scrape-pct" id="scrapePct"></span></div>
         <div class="scrape-logs" id="scrapeLogs"></div>
       </div>
       <div class="scrape-note">

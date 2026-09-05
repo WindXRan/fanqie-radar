@@ -87,6 +87,27 @@ def _ts() -> str:
     return datetime.now().strftime("%H:%M:%S")
 
 
+def check_dependencies():
+    """检查依赖是否已安装，返回 (playwright_ok, chromium_ok)。"""
+    try:
+        import playwright
+        pw_ok = True
+    except ImportError:
+        pw_ok = False
+    if not pw_ok:
+        return False, False
+    try:
+        from playwright.sync_api import sync_playwright
+        with sync_playwright() as p:
+            try:
+                p.chromium.launch(headless=True).close()
+                return True, True
+            except Exception:
+                return True, False
+    except Exception:
+        return True, False
+
+
 def ensure_dependencies(on_log=None):
     """检查并自动安装 Playwright + Chromium。返回 True 表示就绪。"""
     def log(msg):
@@ -95,11 +116,10 @@ def ensure_dependencies(on_log=None):
         else:
             print(msg)
 
-    # 1. 检查 playwright 包
-    try:
-        import playwright
-        log("✓ Playwright 已安装")
-    except ImportError:
+    pw_ok, chrome_ok = check_dependencies()
+
+    # 1. 安装 playwright 包
+    if not pw_ok:
         log("正在安装 Playwright（仅需一次）...")
         try:
             subprocess.check_call(
@@ -110,24 +130,23 @@ def ensure_dependencies(on_log=None):
         except Exception as e:
             log(f"✗ Playwright 安装失败: {e}")
             return False
+    else:
+        log("✓ Playwright 已安装")
 
-    # 2. 检查 chromium 浏览器
-    try:
-        from playwright.sync_api import sync_playwright
-        with sync_playwright() as p:
-            try:
-                p.chromium.launch(headless=True).close()
-                log("✓ Chromium 浏览器已就绪")
-            except Exception:
-                log("正在下载 Chromium 浏览器（仅需一次，约 150MB）...")
-                subprocess.check_call(
-                    [sys.executable, "-m", "playwright", "install", "chromium"],
-                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                )
-                log("✓ Chromium 下载完成")
-    except Exception as e:
-        log(f"✗ Chromium 安装失败: {e}")
-        return False
+    # 2. 安装 chromium 浏览器
+    if not chrome_ok:
+        log("正在下载 Chromium 浏览器（仅需一次，约 150MB）...")
+        try:
+            subprocess.check_call(
+                [sys.executable, "-m", "playwright", "install", "chromium"],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+            log("✓ Chromium 下载完成")
+        except Exception as e:
+            log(f"✗ Chromium 安装失败: {e}")
+            return False
+    else:
+        log("✓ Chromium 浏览器已就绪")
 
     return True
 
