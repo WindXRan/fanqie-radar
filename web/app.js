@@ -176,8 +176,8 @@ function renderCandidates() {
 
 /* ── 广告位（可自定义：放 web/ads.json 即覆盖默认） ── */
 const DEFAULT_ADS = [
+  { title: "蛙蛙写作 · 能替你「打工」的 AI 写作平台", desc: "写作苦手轻松变身爆款作家：一天 10 篇短篇、3 分钟万字长文；新人注册领 600 蛙币，用邀请码 QD5AXb 叠加得 1800 蛙币创作金手指", url: "https://wawawriter.com/app/?invitationCode=QD5AXb", cta: "去领蛙币 →" },
   { title: "fanqie-radar", desc: "觉得有用？去 GitHub 点个 Star，这是它持续更新的动力", url: "https://github.com/WindXRan/fanqie-radar", cta: "GitHub →" },
-  { title: "方寸写作", desc: "AI 网文仿写管线 · 批量生产番茄/蛙蛙小说的工作流", url: "", cta: "" },
 ];
 async function renderAds() {
   let ads = DEFAULT_ADS;
