@@ -176,7 +176,7 @@ function renderCandidates() {
 
 /* ── 广告位（可自定义：放 web/ads.json 即覆盖默认） ── */
 const DEFAULT_ADS = [
-  { title: "fanqie-radar", desc: "觉得有用？去 GitHub 点个 Star，这是它持续更新的动力", url: "https://github.com/your-name/fanqie-radar", cta: "GitHub →" },
+  { title: "fanqie-radar", desc: "觉得有用？去 GitHub 点个 Star，这是它持续更新的动力", url: "https://github.com/WindXRan/fanqie-radar", cta: "GitHub →" },
   { title: "方寸写作", desc: "AI 网文仿写管线 · 批量生产番茄/蛙蛙小说的工作流", url: "", cta: "" },
 ];
 async function renderAds() {

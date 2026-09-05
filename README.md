@@ -47,7 +47,7 @@
 ### 1. 安装
 
 ```bash
-git clone <本仓库地址>
+git clone https://github.com/WindXRan/fanqie-radar.git
 cd fanqie-radar
 pip install .           # 需要 Python >= 3.10，零第三方依赖
 ```
