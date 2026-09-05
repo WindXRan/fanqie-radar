@@ -193,6 +193,44 @@ def _api_book(q: dict) -> dict:
     return {"available": True, "item": out}
 
 
+def _api_books(q: dict) -> dict:
+    """扫榜工作台主数据：书目列表 + 人类扫榜过滤器（搜索/品类/状态/在读/套路词）。"""
+    books = _load(q.get("channel", "female"), q.get("rank", "read"))
+    cat = q.get("category", "")
+    if cat:
+        books = [b for b in books if b.get("category") == cat]
+    kw = (q.get("q") or "").strip().lower()
+    if kw:
+        books = [b for b in books if kw in (b.get("title") or "").lower()
+                 or kw in (b.get("author") or "").lower()
+                 or kw in (b.get("intro") or "").lower()]
+    status = q.get("status", "")
+    if status == "done":
+        books = [b for b in books if "完结" in (b.get("status") or "")]
+    elif status == "serial":
+        books = [b for b in books if b.get("status") and "完结" not in (b.get("status") or "")]
+    min_reads = int(q.get("min_reads", 0) or 0)
+    if min_reads:
+        books = [b for b in books if (b.get("reads") or 0) >= min_reads]
+    trope = (q.get("trope") or "").strip()
+    if trope:
+        books = [b for b in books if trope in (b.get("intro") or "")]
+    sort = q.get("sort", "reads")
+    if sort == "pos":
+        books.sort(key=lambda b: b.get("rank_pos") or 9999)
+    else:
+        books.sort(key=lambda b: -(b.get("reads") or 0))
+    top = int(q.get("top", 200))
+    books = books[:top]
+    items = []
+    for b in books:
+        d = _project(b)
+        d["intro_preview"] = (b.get("intro") or "")[:100]
+        d["trope_hits"] = sum(1 for k in SC.TROPE if k in (b.get("intro") or ""))
+        items.append(d)
+    return {"count": len(items), "items": items}
+
+
 _ROUTES = {
     "/api/meta": _api_meta,
     "/api/ranks": _api_ranks,
@@ -202,6 +240,7 @@ _ROUTES = {
     "/api/find": _api_find,
     "/api/hotwords": _api_hotwords,
     "/api/book": _api_book,
+    "/api/books": _api_books,
 }
 
 

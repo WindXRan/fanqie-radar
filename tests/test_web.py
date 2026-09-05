@@ -89,3 +89,19 @@ def test_api_book(server):
     assert d["item"]["intro"]  # 看板单本详情带简介全文（仅本地看板，MCP 对外仍不放开）
     st, body = _get(server, "/api/book?book_id=9999999999")
     assert json.loads(body)["available"] is False
+
+
+def test_api_books(server):
+    st, body = _get(server, "/api/books")
+    d = json.loads(body)
+    assert d["count"] >= 5
+    b = d["items"][0]
+    assert "intro_preview" in b and "cover" in b and "trope_hits" in b
+    # 套路词筛（简介含"甜宠"的书；投影不含 intro，用数量对比验证筛生效）
+    st, body = _get(server, "/api/books?trope=" + quote("甜宠"))
+    d2 = json.loads(body)
+    assert 1 <= d2["count"] < d["count"]
+    # 状态筛：完结
+    st, body = _get(server, "/api/books?status=done")
+    d3 = json.loads(body)
+    assert all("完结" in (x.get("status") or "") for x in d3["items"])

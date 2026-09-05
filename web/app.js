@@ -1,172 +1,160 @@
-/* 番茄指数看板前端：拉 /api/* 并渲染。零依赖、无框架。 */
-const state = { channel: "female", rank: "read" };
+/* 番茄指数 · 扫榜工作台：模拟人类扫榜过程（翻封面→扫书名→看在读→读简介→收藏候选→看趋势）。零依赖。 */
+const state = {
+  channel: "female", rank: "read",
+  q: "", category: "", status: "", min_reads: 0, trope: "", sort: "reads",
+};
+const CAND_KEY = "fi_candidates";
+let candidates = JSON.parse(localStorage.getItem(CAND_KEY) || "[]");
 
-const DIM_LABELS = { s_done: "完结", s_words: "体量", s_reads: "热度", s_heat: "吸量", s_trope: "套路", s_gf: "金指" };
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const fmtReads = n => { n = Number(n) || 0; return n >= 1e8 ? (n / 1e8).toFixed(1) + "亿" : n >= 1e4 ? (n / 1e4).toFixed(1) + "万" : String(n); };
+const fmtWords = n => { n = Number(n) || 0; return n ? (n >= 1e4 ? (n / 1e4).toFixed(1) + "万" : String(n)) : ""; };
 
-function esc(s) {
-  return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-}
-function fmtReads(n) {
-  n = Number(n) || 0;
-  if (n >= 1e8) return (n / 1e8).toFixed(1) + "亿";
-  if (n >= 1e4) return (n / 1e4).toFixed(1) + "万";
-  return String(n);
-}
-function fmtWords(n) {
-  n = Number(n) || 0;
-  if (!n) return "—";
-  return n >= 1e4 ? (n / 1e4).toFixed(1) + "万" : String(n);
-}
 async function api(path, params = {}) {
   const qs = new URLSearchParams({ channel: state.channel, rank: state.rank, ...params }).toString();
   const r = await fetch(`/api/${path}?${qs}`);
   return r.json();
 }
+
 function coverHTML(b, cls) {
-  const url = b.cover || "";
   return `<div class="cover ${cls}">` +
-    (url ? `<img src="${esc(url)}" loading="lazy" alt="" onerror="this.parentNode.classList.add('noimg')">` : `<span class="ph">无封面</span>`) +
+    (b.cover ? `<img src="${esc(b.cover)}" loading="lazy" alt="" onerror="this.parentNode.classList.add('noimg')">` : "") +
     `<span class="ph">无封面</span></div>`;
 }
-function ring(score) {
-  const r = 24, c = 2 * Math.PI * r, off = c * (1 - score / 100);
-  return `<svg class="ring" viewBox="0 0 56 56">
-    <circle class="track" cx="28" cy="28" r="${r}"></circle>
-    <circle class="prog" cx="28" cy="28" r="${r}" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 28 28)"></circle>
-    <text class="num" x="28" y="28">${Math.round(score)}</text></svg>`;
+
+/* ── 主网格：书卡 ── */
+function badgeHTML(b) {
+  let h = "";
+  if (b.status) h += b.status.includes("完结")
+    ? `<span class="badge done">完结</span>` : `<span class="badge serial">连载中</span>`;
+  if (b.words) h += `<span class="badge words">${fmtWords(b.words)}字</span>`;
+  if (b.trope_hits >= 5) h += `<span class="badge trope">套路×${b.trope_hits}</span>`;
+  return h ? `<div class="bbadges">${h}</div>` : "";
 }
-function dimsHTML(b) {
-  const bd = b.breakdown || {};
-  return `<div class="dims">` + Object.keys(DIM_LABELS).map(k => {
-    const v = Math.min(100, Number(bd[k] || 0));
-    return `<div class="dim"><span class="dl">${DIM_LABELS[k]}</span><span class="dt"><span class="df" style="width:${v}%"></span></span></div>`;
-  }).join("") + `</div>`;
+function cardHTML(b) {
+  const starred = candidates.includes(b.book_id);
+  return `<div class="bcard${starred ? " starred" : ""}" data-bid="${esc(b.book_id)}">
+    ${coverHTML(b, "bcover")}
+    <div class="bbody">
+      <div class="btitle lnk" data-bid="${esc(b.book_id)}" title="${esc(b.title)}">${esc(b.title)}</div>
+      <div class="bmeta">${esc(b.author || "—")} · ${esc(b.category || "—")}</div>
+      <div><span class="breads">${fmtReads(b.reads)}<span class="u">在读</span></span></div>
+      ${badgeHTML(b)}
+      <div class="bintro lnk" data-bid="${esc(b.book_id)}" title="点击看完整简介">${esc(b.intro_preview || "")}</div>
+    </div>
+    <button class="star${starred ? " on" : ""}" data-bid="${esc(b.book_id)}" title="收藏候选">${starred ? "★" : "☆"}</button>
+  </div>`;
 }
-function tagsHTML(b) {
-  let t = "";
-  if (b.trope_hits) t += `<span class="tag">套路×${b.trope_hits}</span>`;
-  if (b.gf_hits) t += `<span class="tag gf">金指×${b.gf_hits}</span>`;
-  return t ? `<div class="tags">${t}</div>` : "";
+
+async function renderGrid() {
+  const params = { sort: state.sort, top: 300 };
+  if (state.q) params.q = state.q;
+  if (state.category) params.category = state.category;
+  if (state.status) params.status = state.status;
+  if (state.min_reads) params.min_reads = state.min_reads;
+  if (state.trope) params.trope = state.trope;
+  const d = await api("books", params);
+  const grid = document.getElementById("grid");
+  if (!d.count) { grid.innerHTML = `<div class="empty" style="grid-column:1/-1">没有匹配的书，放宽筛选试试</div>`; }
+  else grid.innerHTML = d.items.map(cardHTML).join("");
+  // 激活筛选提示条
+  const bar = document.getElementById("activeBar");
+  const chips = [];
+  if (state.q) chips.push(`<span class="fchip" data-clear="q"><b>搜索</b>${esc(state.q)} ×</span>`);
+  if (state.category) chips.push(`<span class="fchip" data-clear="category"><b>品类</b>${esc(state.category)} ×</span>`);
+  if (state.status) chips.push(`<span class="fchip" data-clear="status"><b>状态</b>${state.status === "done" ? "完结" : "连载中"} ×</span>`);
+  if (state.min_reads) chips.push(`<span class="fchip" data-clear="min_reads"><b>在读</b>≥${fmtReads(state.min_reads)} ×</span>`);
+  if (state.trope) chips.push(`<span class="fchip" data-clear="trope"><b>套路</b>${esc(state.trope)} ×</span>`);
+  bar.hidden = !chips.length;
+  bar.innerHTML = chips.join("") + (chips.length ? `<span style="font-size:11px;color:var(--text-faint)">${d.count} 本</span>` : "");
 }
 
-async function render() {
-  let meta, score, heat, trend, hot, ranks;
-  try {
-    [meta, score, heat, trend, hot, ranks] = await Promise.all([
-      api("meta"), api("score", { top: 500 }), api("heat", { top: 15 }),
-      api("trend", { top: 30 }), api("hotwords", { top: 24 }), api("ranks", { top: 500 }),
-    ]);
-  } catch (e) {
-    document.getElementById("kpis").innerHTML = `<div class="empty">数据接口不可用：${esc(e.message)}</div>`;
-    return;
-  }
-
-  // Header 日期
-  document.getElementById("dateBadge").textContent = "数据日期 " + (meta.last_date || "—");
-
-  // KPI
-  const topBook = (score.items && score.items[0]) || null;
-  const topHeat = (heat.items && heat.items[0]) || null;
-  document.getElementById("kpis").innerHTML = `
-    <div class="kpi"><div class="k-label">快照数量</div><div class="k-val">${meta.snapshots}</div><div class="k-sub">本地快照文件</div></div>
-    <div class="kpi"><div class="k-label">书目总数</div><div class="k-val">${meta.books}</div><div class="k-sub">book_id 可寻址 ${meta.with_book_id}</div></div>
-    <div class="kpi"><div class="k-label">最高分书</div><div class="k-val" style="font-size:18px">${topBook ? esc(topBook.title) : "—"}</div><div class="k-sub">评分 ${topBook ? topBook.score : "—"}</div></div>
-    <div class="kpi"><div class="k-label">最强吸量题材</div><div class="k-val" style="font-size:18px">${topHeat ? esc(topHeat.category) : "—"}</div><div class="k-sub">${topHeat ? fmtReads(topHeat.total_reads) + " 在读" : ""}</div></div>`;
-
-  // 题材热度
-  const maxH = Math.max(1, ...heat.items.map(h => h.total_reads || 0));
-  document.getElementById("heatList").innerHTML = heat.items.length
-    ? heat.items.map(h => `
-      <div class="bar-row">
+/* ── 侧栏 ── */
+async function renderHeat() {
+  const d = await api("heat", { top: 12 });
+  const max = Math.max(1, ...d.items.map(h => h.total_reads || 0));
+  document.getElementById("heatList").innerHTML = d.items.length
+    ? d.items.map(h => `
+      <div class="bar-row${state.category === h.category ? " on" : ""}" data-cat="${esc(h.category)}">
         <div class="b-name" title="${esc(h.category)}">${esc(h.category)}</div>
-        <div class="bar-track"><div class="bar-fill" style="width:${(100 * (h.total_reads || 0) / maxH).toFixed(1)}%"><span class="bar-val">${fmtReads(h.total_reads)}</span></div></div>
+        <div class="bar-track"><div class="bar-fill" style="width:${(100 * (h.total_reads || 0) / max).toFixed(1)}%"><span class="bar-val">${fmtReads(h.total_reads)}</span></div></div>
       </div>`).join("")
-    : `<div class="empty">暂无数据</div>`;
-
-  // 评分 Top
-  const top = (score.items || []).slice(0, 10);
-  document.getElementById("scoreList").innerHTML = top.length
-    ? top.map(b => `
-      <div class="score-card">
-        ${coverHTML(b, "sm")}
-        ${ring(b.score)}
-        <div class="sc-body">
-          <div class="sc-title lnk" data-bid="${esc(b.book_id || "")}" title="${esc(b.title)}">${esc(b.title)}</div>
-          <div class="sc-meta"><b>${esc(b.author || "—")}</b> · ${esc(b.category || "—")}${b.words ? " · " + fmtWords(b.words) + "字" : ""}</div>
-          ${dimsHTML(b)}
-          ${tagsHTML(b)}
-        </div>
-      </div>`).join("")
-    : `<div class="empty">暂无评分数据</div>`;
-
-  // 趋势
-  const td = document.getElementById("trendDate");
-  if (trend.available) {
-    td.textContent = `${trend.prev_date} → ${trend.now_date}`;
-    document.getElementById("trendEntered").innerHTML = (trend.entered || []).length
-      ? trend.entered.map((b, i) => `<div class="t-item"><span class="t-rank">${i + 1}</span><span class="t-name" title="${esc(b.title)}">${esc(b.title)}</span><span class="t-delta new">NEW</span></div>`).join("")
-      : `<div class="empty">无新上榜</div>`;
-    document.getElementById("trendDropped").innerHTML = (trend.dropped || []).length
-      ? trend.dropped.map((b, i) => `<div class="t-item"><span class="t-rank">${i + 1}</span><span class="t-name" title="${esc(b.title)}">${esc(b.title)}</span><span class="t-delta dn">OUT</span></div>`).join("")
-      : `<div class="empty">无掉榜</div>`;
-  } else {
-    td.textContent = "";
-    const msg = `<div class="empty">${esc(trend.hint || "趋势差分需 ≥2 份快照")}</div>`;
-    document.getElementById("trendEntered").innerHTML = msg;
-    document.getElementById("trendDropped").innerHTML = msg;
-  }
-
-  // 热词
-  document.getElementById("hotwords").innerHTML = (hot.items || []).length
-    ? hot.items.map(w => `<span class="w">${esc(w.word)}<span class="c">${w.count}</span></span>`).join("")
     : `<div class="empty">暂无</div>`;
-
-  // 明细表（合并评分）
-  const smap = {};
-  (score.items || []).forEach(b => { if (b.book_id) smap[b.book_id] = b.score; });
-  const rows = ranks.items || [];
-  document.getElementById("tblCount").textContent = rows.length + " 本";
-  document.getElementById("tblBody").innerHTML = rows.length
-    ? rows.map(b => {
-        const sc = b.book_id && smap[b.book_id] != null ? smap[b.book_id] : "—";
-        return `<tr><td>${coverHTML(b, "tbl")}</td><td class="lnk" data-bid="${esc(b.book_id || "")}">${esc(b.title)}</td><td>${esc(b.author || "—")}</td><td>${esc(b.category || "—")}</td>
-          <td>${fmtReads(b.reads)}</td>
-          <td>${fmtWords(b.words)}</td><td>${sc}</td></tr>`;
-      }).join("")
-    : `<tr><td colspan="7" class="empty">暂无数据</td></tr>`;
+  // 品类下拉同步
+  const sel = document.getElementById("catSel");
+  const cur = sel.value;
+  sel.innerHTML = `<option value="">全部品类</option>` + d.items.map(h => `<option value="${esc(h.category)}">${esc(h.category)}</option>`).join("");
+  sel.value = cur;
 }
 
-/* 控制切换 */
-function bindSeg(id, key) {
-  const seg = document.getElementById(id);
-  seg.querySelectorAll("button").forEach(btn => {
-    btn.addEventListener("click", () => {
-      seg.querySelectorAll("button").forEach(b => b.classList.remove("on"));
-      btn.classList.add("on");
-      state[key] = btn.dataset.v;
-      render();
-    });
+async function renderTrend() {
+  const d = await api("trend", { top: 30 });
+  const box = document.getElementById("trendBox");
+  document.getElementById("trendDate").textContent = d.available ? `${d.prev_date.slice(-4)} → ${d.now_date.slice(-4)}` : "";
+  if (!d.available) { box.innerHTML = `<div class="empty">${esc(d.hint || "趋势差分需 ≥2 份快照")}</div>`; return; }
+  const row = (t, cls, mark) => `<div class="t-item"><span class="t-name lnk" data-bid="${esc(t.book_id || "")}">${esc(t.title)}</span><span class="t-delta ${cls}">${mark}</span></div>`;
+  box.innerHTML =
+    (d.entered.length ? `<div class="t-sep">新上榜 ${d.entered.length}</div>` + d.entered.slice(0, 6).map(t => row(t, "new", "NEW")).join("") : "") +
+    (d.dropped.length ? `<div class="t-sep">掉出榜 ${d.dropped.length}</div>` + d.dropped.slice(0, 4).map(t => row(t, "dn", "OUT")).join("") : "") +
+    (!d.entered.length && !d.dropped.length ? `<div class="empty">两日榜单无进出</div>` : "");
+}
+
+async function renderHotwords() {
+  const d = await api("hotwords", { top: 18 });
+  document.getElementById("hotwords").innerHTML = d.items.length
+    ? d.items.map(w => `<span class="w${state.trope === w.word ? " on" : ""}" data-trope="${esc(w.word)}">${esc(w.word)}<span class="c">${w.count}</span></span>`).join("")
+    : `<div class="empty">暂无</div>`;
+}
+
+function renderCandidates() {
+  const box = document.getElementById("candBox");
+  if (!candidates.length) { box.innerHTML = `<div class="empty">还没有收藏，翻到心动的点 ☆</div>`; return; }
+  box.innerHTML = candidates.map(bid => {
+    const meta = window._candIndex?.[bid] || {};
+    return `<div class="c-item"><span class="c-name lnk" data-bid="${esc(bid)}">${esc(meta.title || bid)}</span><button class="c-x" data-bid="${esc(bid)}">✕</button></div>`;
+  }).join("");
+}
+
+/* ── 全量刷新 ── */
+async function refresh() {
+  try {
+    const meta = await api("meta");
+    document.getElementById("dateBadge").textContent = "数据日期 " + (meta.last_date || "—");
+    await Promise.all([renderGrid(), renderHeat(), renderTrend(), renderHotwords()]);
+  } catch (e) {
+    document.getElementById("grid").innerHTML = `<div class="empty" style="grid-column:1/-1">接口不可用：${esc(e.message)}</div>`;
+  }
+}
+
+/* ── 收藏 ── */
+function toggleStar(bid) {
+  const i = candidates.indexOf(bid);
+  if (i >= 0) candidates.splice(i, 1); else candidates.push(bid);
+  localStorage.setItem(CAND_KEY, JSON.stringify(candidates));
+  document.querySelectorAll(`.bcard[data-bid="${bid}"]`).forEach(c => {
+    c.classList.toggle("starred", candidates.includes(bid));
+    const s = c.querySelector(".star");
+    s.classList.toggle("on", candidates.includes(bid));
+    s.textContent = candidates.includes(bid) ? "★" : "☆";
   });
+  renderCandidates();
 }
-bindSeg("segChannel", "channel");
-bindSeg("segRank", "rank");
-render();
 
-/* 单本详情模态（点击书名 → /api/book 按需拉简介） */
+/* ── 详情弹窗 ── */
 const mask = document.getElementById("modalMask");
 async function openBook(bid) {
   if (!bid) return;
   try {
-    const r = await fetch(`/api/book?book_id=${encodeURIComponent(bid)}`);
-    const d = await r.json();
+    const d = await fetch(`/api/book?book_id=${encodeURIComponent(bid)}`).then(r => r.json());
     if (!d.available) return;
     const m = d.item;
     document.getElementById("mTitle").textContent = m.title || "未知";
     document.getElementById("mCover").innerHTML = coverHTML(m, "lg");
     document.getElementById("mMeta").innerHTML =
       `<span><b>${esc(m.author || "—")}</b></span><span>${esc(m.category || "—")}</span>` +
-      `<span>在读 ${fmtReads(m.reads)}</span>` +
+      `<span>在读 <b>${fmtReads(m.reads)}</b></span>` +
       (m.words ? `<span>${fmtWords(m.words)}字</span>` : "") +
+      (m.status ? `<span>${esc(m.status)}</span>` : "") +
       (m.rank_pos ? `<span>榜单第 ${m.rank_pos} 位</span>` : "");
     const intro = (m.intro || "").trim();
     const mi = document.getElementById("mIntro");
@@ -176,11 +164,87 @@ async function openBook(bid) {
       (m.url ? `<a href="${esc(m.url)}" target="_blank" rel="noopener">在番茄打开 ↗</a>` : "") +
       `<span>book_id: ${esc(m.book_id || bid)}</span>`;
     mask.hidden = false;
-  } catch (e) { /* 静默：详情失败不打断看板 */ }
+  } catch (e) { /* 静默 */ }
 }
-document.addEventListener("click", (ev) => {
+
+/* ── 事件 ── */
+document.getElementById("segChannel").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  document.querySelectorAll("#segChannel button").forEach(x => x.classList.remove("on"));
+  b.classList.add("on"); state.channel = b.dataset.v;
+  state.category = ""; document.getElementById("catSel").value = "";
+  refresh();
+});
+document.getElementById("segRank").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  document.querySelectorAll("#segRank button").forEach(x => x.classList.remove("on"));
+  b.classList.add("on"); state.rank = b.dataset.v; refresh();
+});
+document.getElementById("segSort").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  document.querySelectorAll("#segSort button").forEach(x => x.classList.remove("on"));
+  b.classList.add("on"); state.sort = b.dataset.v; renderGrid();
+});
+document.getElementById("searchBox").addEventListener("input", e => {
+  state.q = e.target.value.trim(); renderGrid();
+});
+document.getElementById("catSel").addEventListener("change", e => {
+  state.category = e.target.value; renderGrid(); renderHeat();
+});
+document.getElementById("chips").addEventListener("click", e => {
+  const b = e.target.closest(".chip"); if (!b) return;
+  const f = b.dataset.f;
+  const on = b.classList.toggle("on");
+  if (f === "status") state.status = on ? b.dataset.v : "";
+  if (f === "min_reads") state.min_reads = on ? Number(b.dataset.v) : 0;
+  // 同组互斥（完结/连载、10万/50万）
+  document.querySelectorAll(`#chips .chip[data-f="${f}"]`).forEach(x => { if (x !== b) x.classList.remove("on"); });
+  if (f === "status" && on) state.status = b.dataset.v;
+  renderGrid();
+});
+document.getElementById("catSel");
+document.addEventListener("click", ev => {
   const t = ev.target.closest(".lnk");
-  if (t && t.dataset.bid) { openBook(t.dataset.bid); return; }
+  if (t) { openBook(t.dataset.bid); return; }
+  const s = ev.target.closest(".star");
+  if (s) { toggleStar(s.dataset.bid); return; }
+  const x = ev.target.closest(".c-x");
+  if (x) { toggleStar(x.dataset.bid); return; }
+  const w = ev.target.closest(".cloud .w");
+  if (w) {
+    const tw = w.dataset.trope;
+    state.trope = state.trope === tw ? "" : tw;
+    document.querySelectorAll(".cloud .w").forEach(x => x.classList.toggle("on", x.dataset.trope === state.trope));
+    renderGrid(); return;
+  }
+  const br = ev.target.closest(".bar-row");
+  if (br) {
+    const cat = state.category === br.dataset.cat ? "" : br.dataset.cat;
+    state.category = cat;
+    document.getElementById("catSel").value = cat;
+    renderGrid(); renderHeat(); return;
+  }
+  const fc = ev.target.closest(".fchip");
+  if (fc) {
+    const k = fc.dataset.clear;
+    state[k] = k === "min_reads" ? 0 : "";
+    document.querySelectorAll(`#chips .chip[data-f="${k}"]`).forEach(x => x.classList.remove("on"));
+    if (k === "category") document.getElementById("catSel").value = "";
+    renderGrid(); if (k === "category") renderHeat();
+    return;
+  }
   if (ev.target === mask || ev.target.id === "mClose") mask.hidden = true;
 });
-document.addEventListener("keydown", (e) => { if (e.key === "Escape") mask.hidden = true; });
+document.addEventListener("keydown", e => { if (e.key === "Escape") mask.hidden = true; });
+
+/* 启动 */
+(async () => {
+  // 候选清单索引（书名回显用，惰性）
+  try {
+    const d = await api("books", { top: 500 });
+    window._candIndex = {};
+    d.items.forEach(b => window._candIndex[b.book_id] = b);
+  } catch (e) { /* 忽略 */ }
+  renderCandidates();
+  refresh();
+})();
