@@ -52,10 +52,10 @@ def _load(channel: str, rank: str, top: int | None = None) -> list[dict]:
     return books
 
 
-_SAFE_FIELDS = ("book_id", "title", "author", "category", "reads", "status", "words", "url", "gender", "date", "cover")
+_SAFE_FIELDS = ("book_id", "title", "author", "category", "reads", "status", "chapters", "url", "gender", "date", "cover")
 
-# 可选字数/状态缓存（<data>/meta_cache.json，由用户自备的外部补全工具产出，本仓库不抓取）
-# 格式：{"<book_id>": {"words": 356000, "status": "已完结", "chapters": 158}}
+# 可选章节/状态缓存（<data>/meta_cache.json，由用户自备的外部补全工具产出，本仓库不抓取）
+# 格式：{"<book_id>": {"chapters": 158, "status": "已完结"}}
 _META_CACHE: dict | None = None
 _META_CACHE_MTIME = 0.0
 
@@ -86,13 +86,11 @@ def _project(b: dict) -> dict:
     out = {k: b.get(k) for k in _SAFE_FIELDS}
     mc = _meta_cache().get(str(b.get("book_id") or ""))
     if mc:
-        # 快照缺字段时用缓存补（字数/状态）；快照有值不覆盖
-        if not out.get("words") and mc.get("words"):
-            out["words"] = mc["words"]
+        # 快照缺字段时用缓存补（章节/状态）；快照有值不覆盖
+        if not out.get("chapters") and mc.get("chapters"):
+            out["chapters"] = mc["chapters"]
         if not out.get("status") and mc.get("status"):
             out["status"] = mc["status"]
-        if mc.get("chapters"):
-            out["chapters"] = mc["chapters"]
     return out
 
 
@@ -127,7 +125,7 @@ def _api_score(q: dict) -> dict:
     for b in ranked:
         d = _project(b)
         d["score"] = b.get("score")
-        d["breakdown"] = {k: b.get(k) for k in ("s_done", "s_words", "s_reads", "s_heat", "s_trope", "s_gf", "s_stable")}
+        d["breakdown"] = {k: b.get(k) for k in ("s_done", "s_size", "s_reads", "s_heat", "s_trope", "s_gf", "s_stable")}
         d["trope_hits"] = b.get("trope_hits")
         d["gf_hits"] = b.get("gf_hits")
         items.append(d)
@@ -298,7 +296,7 @@ def main():
     handler = partial(Handler, data_dir=a.data)
     httpd = HTTPServer((a.host, a.port), handler)
     url = f"http://{a.host}:{a.port}"
-    print(f"📊 番茄指数看板已启动：{url}  （Ctrl+C 退出）")
+    print(f"📊 番茄雷达看板已启动：{url}  （Ctrl+C 退出）")
     print(f"   数据目录：{S.data_dirs()}")
     try:
         httpd.serve_forever()

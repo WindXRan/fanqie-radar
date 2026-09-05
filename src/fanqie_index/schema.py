@@ -18,7 +18,7 @@
   书名叶子字段（自描述，缺什么算什么）：
     title, author, reads("24.1万"或整数), intro(简介,可选),
     url(fanqienovel.com/page/{book_id}), cover(封面URL,可选),
-    status("已完结"/"连载中"), words(整数), bookid(可选, 缺失则从 url 提取),
+    status("已完结"/"连载中"), chapters(章节数,公开可获取,可选), bookid(可选, 缺失则从 url 提取),
     category(平铺格式下每本自带；分类格式由所在 category.name 注入)
 
 设计铁律：
@@ -66,18 +66,23 @@ def parse_reads(s) -> int:
 def data_dirs() -> list[Path]:
     """快照目录探测序（首个含 fanqie_*_ranks_*.json 者生效，可 env 覆盖）。
 
-    默认顺序：
+    探测顺序：
       1. $FANQIE_INDEX_DATA_DIRS（os.pathsep 分隔，可放多个）
-      2. ./data（运行目录下的 data/，最常用）
-      3. 环境变量 FANQIE_INDEX_DATA_DIR（单目录）
+      2. 环境变量 FANQIE_INDEX_DATA_DIR（单目录）
+      3. ./data（运行目录下的 data/）
+      4. 包内置示例数据（零配置兜底：装完即用，无需任何配置）
     """
+    pkg = Path(__file__).parent / "sample_data"
     env = os.environ.get("FANQIE_INDEX_DATA_DIRS")
     if env:
         return [Path(p) for p in env.split(os.pathsep) if p.strip()]
     single = os.environ.get("FANQIE_INDEX_DATA_DIR")
     dirs = [Path(d) for d in (single,) if d]
     dirs.append(Path.cwd() / "data")
-    return [d for d in dirs if d.is_dir()] or [Path.cwd() / "data"]
+    dirs.append(pkg)
+    # 只认真有快照的目录（空的 ./data 不挡包内兜底）
+    has_snap = [d for d in dirs if d.is_dir() and any(d.glob("fanqie_*_ranks_*.json"))]
+    return has_snap or [pkg]
 
 
 def snapshot_files(dirs: list[Path] | None = None) -> list[Path]:
@@ -131,7 +136,7 @@ def normalize_book(b: dict, meta: dict, idx: int, category: str = "") -> dict:
         "reads": reads,
         "reads_raw": (b.get("reads") or "") if isinstance(b.get("reads"), str) else "",
         "status": (b.get("status") or "").strip(),
-        "words": int(b.get("words") or 0) or 0,
+        "chapters": int(b.get("chapters") or 0) or 0,
         "intro": (b.get("intro") or "").strip(),
         "url": url,
         "cover": b.get("cover") or "",

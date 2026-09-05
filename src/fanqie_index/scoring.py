@@ -11,7 +11,7 @@
   - 纯标准库，零第三方依赖。
 
 字段约定（来自 schema.normalize_book 后的单本）：
-  title, author, category, reads(int), words(int), status, intro, gender,
+  title, author, category, reads(int), chapters(int 章节数), status, intro, gender,
   可选：boards(list[str]), days(int 持续在榜天数), peak(bool), peak_female(bool)
 """
 from __future__ import annotations
@@ -19,12 +19,12 @@ from __future__ import annotations
 import math
 from collections import defaultdict
 
-# ── 体量适配：目标区间（字）──
+# ── 体量适配：目标区间（章）──
 # 仿写产出 90-200 章 × 2250 字 = 20-45 万字，episodes 默认与源书章数 1:1（纯扩写原则）
-# → 源书体量≈产出体量。老理想带 40-80 万会制造 0.5-0.85 强缩写——
-# 2026-08-31 调研实锤：缩放无显式机制=丢尾/空锚。
-# 用户定调：百万字长书不作仿写源（>100 万 = 最低分）。
-WORDS_LO, WORDS_BEST_LO, WORDS_BEST_HI, WORDS_HI = 150_000, 200_000, 500_000, 1_000_000
+# → 源书体量≈产出体量。字数非公开稳定字段（2026-09-05 用户定调删除），改用章节数
+#（番茄书籍页公开可获取），按 2250 字/章折算历史字数阈值：15万/20万/50万/100万 → 70/90/220/450 章。
+# 用户定调：百万字长书（≈450 章+）不作仿写源（最低分）。
+CH_LO, CH_BEST_LO, CH_BEST_HI, CH_HI = 70, 90, 220, 450
 
 # 套路词典（简介命中数 = 骨架清晰度代理指标）
 TROPE = [
@@ -96,19 +96,19 @@ def is_nonfiction(b: dict) -> tuple[bool, str]:
 
 # ── 女频完结短书评分维度 ──
 
-def score_words(w: int) -> float:
-    """体量适配：20-50 万 = 100 分，两侧线性衰减；>100 万最低分。"""
-    if w <= 0:
+def score_chapters(n: int) -> float:
+    """体量适配：90-220 章 = 100 分，两侧线性衰减；>450 章最低分。"""
+    if n <= 0:
         return 30.0
-    if WORDS_BEST_LO <= w <= WORDS_BEST_HI:
+    if CH_BEST_LO <= n <= CH_BEST_HI:
         return 100.0
-    if w < WORDS_BEST_LO:
-        if w < WORDS_LO:
+    if n < CH_BEST_LO:
+        if n < CH_LO:
             return 25.0
-        return 40 + 60 * (w - WORDS_LO) / (WORDS_BEST_LO - WORDS_LO)
-    if w > WORDS_HI:
+        return 40 + 60 * (n - CH_LO) / (CH_BEST_LO - CH_LO)
+    if n > CH_HI:
         return 15.0
-    return 100 - 70 * (w - WORDS_BEST_HI) / (WORDS_HI - WORDS_BEST_HI)
+    return 100 - 70 * (n - CH_BEST_HI) / (CH_HI - CH_BEST_HI)
 
 
 def score_reads(r: int, rmax: int) -> float:
@@ -174,7 +174,7 @@ def score_book(b: dict, rmax: int, dmax: int, heat: dict) -> dict:
     s_r = score_reads(int(b.get("reads") or 0), rmax) if has_r else _median_reads(rmax)
     s_t = score_trope(b.get("intro") or "")
     s_gf = score_gf(b.get("intro") or "")
-    s_w = score_words(int(b.get("words") or 0))
+    s_w = score_chapters(int(b.get("chapters") or 0))
     s_heat = heat.get(b.get("category"), _median_heat(heat))
 
     total = s_done * 0.20 + s_w * 0.20 + s_r * 0.15 + s_heat * 0.15 + s_t * 0.15 + s_gf * 0.15
@@ -197,7 +197,7 @@ def score_book(b: dict, rmax: int, dmax: int, heat: dict) -> dict:
     out = dict(b)
     out["score"] = round(min(100.0, total), 1)
     out["s_done"] = round(s_done)
-    out["s_words"] = round(s_w)
+    out["s_size"] = round(s_w)
     out["s_reads"] = round(s_r)
     out["s_heat"] = round(s_heat)
     out["s_trope"] = round(s_t)
@@ -232,18 +232,20 @@ def rank_books(books: list[dict], top: int | None = None) -> list[dict]:
 
 # ── 男频连载母本评分 ──
 
-SERIAL_WORDS_LO, SERIAL_WORDS_BEST = 500_000, 1_000_000
+SERIAL_CH_LO, SERIAL_CH_BEST = 220, 450
 
 
-def score_serial_words(w: int) -> float:
-    """连载母本体量：50 万起步，100 万+ 满分（与女频 20-50 万最优相反）。"""
-    if w <= 0:
+def score_serial_chapters(n: int) -> float:
+    """连载母本体量：220 章起步，450 章+ 满分（与女频 90-220 章最优相反）。
+
+    历史字数阈值 50 万/100 万按 2250 字/章折算；内插下限 20 万 → 90 章。"""
+    if n <= 0:
         return 30.0
-    if w >= SERIAL_WORDS_BEST:
+    if n >= SERIAL_CH_BEST:
         return 100.0
-    if w <= SERIAL_WORDS_LO:
-        return 30 + 70 * max(0.0, w - 200_000) / (SERIAL_WORDS_LO - 200_000)
-    return 70 + 30 * (w - SERIAL_WORDS_LO) / (SERIAL_WORDS_BEST - SERIAL_WORDS_LO)
+    if n <= SERIAL_CH_LO:
+        return 30 + 70 * max(0.0, n - 90) / (SERIAL_CH_LO - 90)
+    return 70 + 30 * (n - SERIAL_CH_LO) / (SERIAL_CH_BEST - SERIAL_CH_LO)
 
 
 def score_update_fresh(last_ts, now_ts) -> float:
@@ -278,7 +280,7 @@ def rank_serial(books: list[dict], top: int | None = None) -> list[dict]:
     r_impute = r_obs[len(r_obs) // 2] if r_obs else 50.0
     out = []
     for b in books:
-        s_w = score_serial_words(int(b.get("words") or 0))
+        s_w = score_serial_chapters(int(b.get("chapters") or 0))
         s_r = score_reads(int(b.get("reads") or 0), rmax) if b.get("reads", 0) > 0 else r_impute
         s_up = score_update_fresh(b.get("last_update_time"), now_ts)
         s_heat = heat.get(b.get("category"), h_impute)
@@ -291,7 +293,7 @@ def rank_serial(books: list[dict], top: int | None = None) -> list[dict]:
             total += 6
         b2 = dict(b)
         b2["score"] = round(min(100.0, total), 1)
-        b2["s_serial_words"] = round(s_w)
+        b2["s_serial_size"] = round(s_w)
         b2["s_update"] = round(s_up)
         b2["s_reads"] = round(s_r)
         b2["s_heat"] = round(s_heat)

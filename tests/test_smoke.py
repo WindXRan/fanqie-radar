@@ -58,7 +58,7 @@ def test_scoring_rank():
 
 def test_scoring_no_intro_safe():
     # 无 intro 的书不应崩，给中性分
-    b = {"title": "x", "reads": 100000, "words": 300000, "status": "已完结", "intro": "", "category": "c"}
+    b = {"title": "x", "reads": 100000, "chapters": 130, "status": "已完结", "intro": "", "category": "c"}
     out = SC.score_book(b, 1000000, 1, {})
     assert 0 <= out["score"] <= 100
 

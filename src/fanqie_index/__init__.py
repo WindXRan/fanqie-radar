@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""fanqie-index-mcp：番茄榜单阅读 + 仿写选书评分（stdio MCP，零爬虫/零第三方依赖）。
+"""fanqie-radar（番茄雷达）：番茄小说榜单数据 + 扫榜选书工作台 + MCP 服务（零配置/零爬虫/零第三方依赖）。
 
 子模块：
   schema   榜单快照：目录探测 / 元数据解析 / 书目归一 / 查找 / 统计
@@ -9,6 +9,6 @@
 """
 from . import schema, scoring, analysis, mcp_server
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = ["schema", "scoring", "analysis", "mcp_server"]

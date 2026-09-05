@@ -1,10 +1,13 @@
-# fanqie-index-mcp
+# 番茄雷达 Fanqie Radar
 
-> 番茄小说榜单「阅读 + 仿写选书评分」MCP 服务。零爬虫、零第三方运行时依赖，纯标准库。
+> **番茄小说榜单数据 · 扫榜选书工作台 · MCP Server**（fanqie novel rank data / webnovel trend analysis / imitation book scoring）
+> 零配置、零爬虫、零第三方运行时依赖，纯 Python 标准库，**内置示例数据装完即用**。
 
-在 Claude / Cursor / 任意 MCP 客户端里直接问「现在女频什么火」「这本适合仿写吗」「豪门总裁赛道热度如何」，它就答。
+在 Claude / Cursor / 任意 MCP 客户端里直接问「现在女频什么火」「这本适合仿写吗」「豪门总裁赛道热度如何」，它就答。也可以打开自带的可视化看板，像人一样翻封面、扫书名、看在读、收藏候选。
 
 ![看板](docs/screenshot.jpg)
+
+**关键词**：番茄小说 · 番茄榜单 · 扫榜 · 网文数据 · 网文选题 · 题材热度 · 仿写选书 · AI 写作 · MCP · Model Context Protocol · MCP Server · 数据看板
 
 ---
 
@@ -18,12 +21,14 @@
 
 | 能力 | 普通榜单爬虫 | 本仓库 |
 |---|---|---|
-| 榜单数据 | ✅ | ✅（自备快照） |
+| 榜单数据 | ✅ | ✅（自备快照，附示例数据） |
 | 题材热度聚合 | 偶尔 | ✅ |
 | 跨榜强信号（新书即爆款） | ❌ | ✅ |
 | 多日趋势差分 | ❌ | ✅ |
 | **仿写适合度评分** | ❌ | ✅ **六维 + 加成，数据驱动** |
+| 可视化扫榜看板 | ❌ | ✅ |
 | 接入 AI 助手（MCP） | ❌ | ✅ |
+| 上手成本 | 要配数据源 | **零配置，装完即用** |
 
 评分模型是核心资产，不是拍脑袋的硬规则——维度权重、阈值都来自实测反馈（详见下方「评分模型」）。
 
@@ -31,68 +36,62 @@
 
 ## 三条红线（开源版铁律）
 
-1. **不抓取、不内置任何平台数据。** 本仓库零爬虫代码、零版权数据。数据是**你自己负责采集**的本地快照。
+1. **不抓取、不内置任何平台数据。** 本仓库零爬虫代码、零版权数据。数据是**你自己负责采集**的本地快照；包内仅附**虚构**示例数据供零配置试跑。
 2. **不提供「下载整本小说」能力。** MCP 只返回 `book_id` / `url`，让你自己去处理。
-3. **MCP 对外投影不返回 `intro` 简介全文 / `cover` 版权图 URL**（书目只含：book_id、标题、作者、品类、在读、状态、字数、url）。本地看板**点击书名可看简介**——渲染的是用户本地自有快照，按需单本拉取，不经仓库分发、不进 MCP。
+3. **MCP 对外投影不返回 `intro` 简介全文 / `cover` 版权图 URL**（书目只含：book_id、标题、作者、品类、在读、状态、章节数、url）。本地看板**点击书名可看简介**——渲染的是用户本地自有快照，按需单本拉取，不经仓库分发、不进 MCP。
 
 ---
 
-## 快速开始
+## 快速开始（零配置）
 
 ### 1. 安装
 
 ```bash
 git clone <本仓库地址>
-cd fanqie-index-mcp
-pip install -e .        # 需要 Python >= 3.10
+cd fanqie-radar
+pip install .           # 需要 Python >= 3.10，零第三方依赖
 ```
 
-装完后有 `fanqie-index` 命令，等价于 `python -m fanqie_index.mcp_server`。
+不装包也能直接跑：`python -m fanqie_index.mcp_server`。
 
-### 2. 准备数据
+### 2. 直接用（什么都不用配）
 
-把你的榜单快照放到一个目录（**不进 git**，`.gitignore` 已排除 `data/`）。文件命名遵循下方规范：
+**未配置数据目录时，自动落到包内示例数据**（虚构榜单，非真实数据）——装完就能跑通全部 7 个工具和看板：
 
-```
-fanqie_female_read_ranks_20260905.json
-fanqie_female_new_ranks_20260905.json
-fanqie_male_read_ranks_20260905.json
-...
+```bash
+fanqie-radar            # MCP stdio 服务，直接挂客户端
+fanqie-radar-web        # 可视化看板，浏览器打开 http://127.0.0.1:8401
 ```
 
-仓库 `examples/sample_data/` 里有一份**虚构的**示例数据（非真实榜单），仅供跑通流程。
+### 3. 换上你的真实数据
 
-### 3. 挂到 MCP 客户端
+把你的榜单快照放进 `./data/` 目录（或任意目录，设 `FANQIE_INDEX_DATA_DIRS` 指过去）。命名规范见下方「数据格式规范」。
+
+### 4. 挂到 MCP 客户端
 
 **Claude Desktop**（`claude_desktop_config.json`）：
 
 ```json
 {
   "mcpServers": {
-    "fanqie-index": {
-      "command": "fanqie-index",
-      "env": {
-        "FANQIE_INDEX_DATA_DIRS": "C:/path/to/your/data"
-      }
+    "fanqie-radar": {
+      "command": "fanqie-radar"
     }
   }
 }
 ```
 
-**Cursor / 其他**：同样指向 `fanqie-index` 命令（或 `python -m fanqie_index.mcp_server`），并设 `FANQIE_INDEX_DATA_DIRS` 环境变量。
+零配置即可挂载（跑在示例数据上）；要分析自己的数据，加一个 env 指向快照目录：
 
-数据目录也可在运行时指定：多目录用 `;` 分隔（Windows）/ `:`（Linux/macOS）：
-
-```bash
-FANQIE_INDEX_DATA_DIRS="C:/data/a;C:/data/b" fanqie-index
+```json
+"env": { "FANQIE_INDEX_DATA_DIRS": "C:/path/to/your/data" }
 ```
 
-### 4. 直接玩（不挂客户端）
+**Cursor / 其他**：同样指向 `fanqie-radar` 命令（或 `python -m fanqie_index.mcp_server`）。多目录用 `;` 分隔（Windows）/ `:`（Linux/macOS）。
 
-```bash
-FANQIE_INDEX_DATA_DIRS=examples/sample_data python -m fanqie_index.mcp_server
-# 然后按 JSON-RPC 协议发 stdin 行（见下方「调试」）
-```
+### 5. Agent Skill（WorkBuddy / Claude 等智能体一键接入）
+
+本仓库自带 Agent Skill（`skills/fanqie-radar/SKILL.md`）：智能体用户把该目录装进技能库，即可让 AI 自动启动服务、调用 API/工具，**同样零配置**。
 
 ---
 
@@ -101,19 +100,14 @@ FANQIE_INDEX_DATA_DIRS=examples/sample_data python -m fanqie_index.mcp_server
 纯前端暗色玻璃风仪表盘，**零依赖、纯原生**（无 CDN、无框架）。把数据能力变成一眼能看懂的漂亮界面——开源引流的主战场。
 
 ```bash
-fanqie-index-web --data <你的数据目录> --port 8401
-# 浏览器打开 http://127.0.0.1:8401
+fanqie-radar-web --data <你的数据目录> --port 8401
+# 浏览器打开 http://127.0.0.1:8401（不传 --data 则自动用包内示例数据）
 ```
-
-> 想先看看长什么样？用仓库自带的虚构示例数据：
-> ```bash
-> fanqie-index-web --data examples/sample_data --port 8401
-> ```
 
 看板包含：
 
 - **固定顶栏**：品牌 / 女频·男频·新书榜切换 / 快筛工具条 / 品类快跳条——整条 sticky 毛玻璃，下滑不消失，换榜筛选随时可用
-- **书卡流**（主视图，全宽三列）：封面 / 书名 / 作者·品类 / 在读大字（量级分色）/ 徽章（完结·字数·套路命中）/ 简介前两行；品类分组小节标题 + 骨架屏 + 级联入场
+- **书卡流**（主视图，全宽三列）：封面 / 书名 / 作者·品类 / 在读大字（量级分色）/ 徽章（完结·章节数·套路命中）/ 简介前两行；品类分组小节标题 + 骨架屏 + 级联入场
 - **右侧抽屉**（顶栏按钮呼出，Esc/遮罩关闭）：
   - 📊 题材热度 —— 各品类在读量对比条
   - ⚡ 今日动静 —— 新上榜 / 掉出榜（对比同榜两份快照）
@@ -148,7 +142,7 @@ fanqie_{gender}_{rank}_ranks_{YYYYMMDD}.json
   "categories": [
     {"name": "豪门总裁", "books": [{ "title": "...", "author": "...", "reads": "24.1万",
       "intro": "（可选）...", "url": "https://fanqienovel.com/page/123", "status": "已完结",
-      "words": 356000, "bookid": "123" }]}
+      "chapters": 158, "bookid": "123" }]}
   ]
 }
 ```
@@ -156,16 +150,17 @@ fanqie_{gender}_{rank}_ranks_{YYYYMMDD}.json
 - `reads` 支持 `"24.1万"` / `"1.2亿"` / 整数。
 - `bookid` 缺失时自动从 `url` 的 `/page/{id}` 提取——**全量书目都可被 book_id 寻址**。
 - `intro` 选填：有它评分更准确（套路/金手指命中），没有给中性分。
+- `chapters` 选填：章节数（番茄书籍页公开可获取），用于体量适配评分与看板徽章。
 - 也兼容平铺格式 `{"books": [...], ...}`（每本自带 `category`）。
 
-**可选：字数/状态缓存**（`<数据目录>/meta_cache.json`）——榜单快照通常不含字数/状态，
+**可选：章节/状态缓存**（`<数据目录>/meta_cache.json`）——榜单快照通常不含章节/状态，
 本仓库**不抓取**，由你自己的外部工具补全后放到数据目录即可，看板自动合并（mtime 热更新，改完即生效）：
 
 ```json
-{ "<book_id>": { "words": 356000, "status": "已完结", "chapters": 158 } }
+{ "<book_id>": { "chapters": 158, "status": "已完结" } }
 ```
 
-快照缺字段时用缓存补，快照有值不覆盖。没有缓存文件看板照常工作（字数显示 "—"）。
+快照缺字段时用缓存补，快照有值不覆盖。没有缓存文件看板照常工作（章节数显示 "—"）。
 
 ---
 
@@ -190,7 +185,7 @@ fanqie_{gender}_{rank}_ranks_{YYYYMMDD}.json
 | 维度 | 权重 | 含义 |
 |---|---|---|
 | 完结度 | 20% | 已完结=100 / 连载中=40（可一次性拆全本） |
-| 体量适配 | 20% | 20–50 万字最优；<15 万弧线不足，>100 万强缩写丢尾 |
+| 体量适配 | 20% | 90–220 章最优；<70 章弧线不足，>450 章强缩写丢尾 |
 | 单本热度 | 15% | 在对数归一后的在读量级（避免头部吃光分数） |
 | 题材吸量 | 15% | 所在类目的吸量指数（在数据驱动聚合的 heat 基础上） |
 | 套路密度 | 15% | 简介命中的套路词数（骨架清晰度代理） |
@@ -198,9 +193,9 @@ fanqie_{gender}_{rank}_ranks_{YYYYMMDD}.json
 
 **加成项（有则加，无则跳过）：** 持续在榜天数（≤+8，套路耐看）、新书榜命中（+6，近期起量）、跨榜（≥2 榜，+4）、巅峰榜（+8，平台月度精选，女频专属再 +4）。
 
-**男频连载母本评分（`serial=true`）：** 维度换成 连载体量 25% / 在读 25% / 更新活跃 15% / 题材吸量 15% / 套路 10% / 金手指 10%——与女频「短完结」相反，母本追求百万字级连载长书 + 日更活跃。
+**男频连载母本评分（`serial=true`）：** 维度换成 连载体量 25% / 在读 25% / 更新活跃 15% / 题材吸量 15% / 套路 10% / 金手指 10%——与女频「短完结」相反，母本追求 450 章+ 连载长书 + 日更活跃。
 
-所有阈值来自实测（如「百万字长书不作仿写源」「50 万–100 万字的连载体量最优」），详见 `src/fanqie_index/scoring.py` 内各函数 docstring 的调研出处。
+所有阈值来自实测（如「百万字长书不作仿写源」「≈220–450 章的连载体量最优」；历史字数阈值按 2250 字/章折算为章节数），详见 `src/fanqie_index/scoring.py` 内各函数 docstring 的调研出处。
 
 ---
 
@@ -208,7 +203,7 @@ fanqie_{gender}_{rank}_ranks_{YYYYMMDD}.json
 
 ```bash
 pip install -e ".[dev]"
-pytest                      # 用 examples/sample_data 跑 11 个冒烟测试
+pytest                      # 21 个测试
 ```
 
 结构：
@@ -219,14 +214,16 @@ src/fanqie_index/
   scoring.py     六维评分 + 男频连载评分（词表 + 维度函数 + 加权）
   analysis.py    题材热度 / 跨榜强信号 / 书名热词 / 多日趋势差分
   mcp_server.py  stdio MCP 服务入口（手写 JSON-RPC，零第三方依赖）
-examples/sample_data/   合成示例数据（虚构，非真实榜单）
+  sample_data/   包内示例数据（虚构，零配置兜底）
+examples/sample_data/   同款示例数据（仓库副本）
+skills/fanqie-radar/    Agent Skill（智能体一键接入）
 tests/                  pytest 冒烟测试
 ```
 
 **调试 MCP：** 直接往 stdin 发 newline-delimited JSON-RPC：
 
 ```bash
-FANQIE_INDEX_DATA_DIRS=examples/sample_data python -c "
+python -c "
 import subprocess,os,json
 inp=[json.dumps({'jsonrpc':'2.0','id':1,'method':'initialize','params':{}}),
      json.dumps({'jsonrpc':'2.0','id':2,'method':'tools/list'})]

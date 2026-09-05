@@ -36,7 +36,7 @@ def _get(port, path):
 
 def test_index_html(server):
     st, body = _get(server, "/")
-    assert st == 200 and b"<html" in body and "番茄指数".encode("utf-8") in body
+    assert st == 200 and b"<html" in body and "番茄雷达".encode("utf-8") in body
 
 
 def test_static_assets(server):

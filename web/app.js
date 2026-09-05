@@ -1,4 +1,4 @@
-/* 番茄指数 · 扫榜工作台：模拟人类扫榜过程（翻封面→扫书名→看在读→读简介→收藏候选→看趋势）。零依赖。 */
+/* 番茄雷达 Fanqie Radar · 扫榜工作台：模拟人类扫榜过程（翻封面→扫书名→看在读→读简介→收藏候选→看趋势）。零依赖。 */
 const state = {
   channel: "female", rank: "read",
   q: "", category: "", status: "", min_reads: 0, trope: "", sort: "reads",
@@ -8,7 +8,7 @@ let candidates = JSON.parse(localStorage.getItem(CAND_KEY) || "[]");
 
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const fmtReads = n => { n = Number(n) || 0; return n >= 1e8 ? (n / 1e8).toFixed(1) + "亿" : n >= 1e4 ? (n / 1e4).toFixed(1) + "万" : String(n); };
-const fmtWords = n => { n = Number(n) || 0; return n ? (n >= 1e4 ? (n / 1e4).toFixed(1) + "万" : String(n)) : ""; };
+const fmtChapters = n => { n = Number(n) || 0; return n ? n + "章" : ""; };
 
 async function api(path, params = {}) {
   const qs = new URLSearchParams({ channel: state.channel, rank: state.rank, ...params }).toString();
@@ -27,7 +27,7 @@ function badgeHTML(b) {
   let h = "";
   if (b.status) h += b.status.includes("完结")
     ? `<span class="badge done">完结</span>` : `<span class="badge serial">连载中</span>`;
-  if (b.words) h += `<span class="badge words">${fmtWords(b.words)}字</span>`;
+  if (b.chapters) h += `<span class="badge words">${fmtChapters(b.chapters)}</span>`;
   if (b.trope_hits >= 5) h += `<span class="badge trope">套路×${b.trope_hits}</span>`;
   return h ? `<div class="bbadges">${h}</div>` : "";
 }
@@ -165,7 +165,7 @@ function renderCandidates() {
 
 /* ── 广告位（可自定义：放 web/ads.json 即覆盖默认） ── */
 const DEFAULT_ADS = [
-  { title: "fanqie-index-mcp", desc: "觉得有用？去 GitHub 点个 Star，这是它持续更新的动力", url: "https://github.com/your-name/fanqie-index-mcp", cta: "GitHub →" },
+  { title: "fanqie-radar", desc: "觉得有用？去 GitHub 点个 Star，这是它持续更新的动力", url: "https://github.com/your-name/fanqie-radar", cta: "GitHub →" },
   { title: "方寸写作", desc: "AI 网文仿写管线 · 批量生产番茄/蛙蛙小说的工作流", url: "", cta: "" },
 ];
 async function renderAds() {
@@ -246,7 +246,7 @@ async function openBook(bid) {
     document.getElementById("mMeta").innerHTML =
       `<span><b>${esc(m.author || "—")}</b></span><span>${esc(m.category || "—")}</span>` +
       `<span>在读 <b>${fmtReads(m.reads)}</b></span>` +
-      (m.words ? `<span>${fmtWords(m.words)}字</span>` : "") +
+      (m.chapters ? `<span>${fmtChapters(m.chapters)}</span>` : "") +
       (m.status ? `<span>${esc(m.status)}</span>` : "") +
       (m.rank_pos ? `<span>榜单第 ${m.rank_pos} 位</span>` : "");
     const intro = (m.intro || "").trim();
@@ -342,6 +342,12 @@ document.addEventListener("keydown", e => {
 const toTop = document.getElementById("toTop");
 window.addEventListener("scroll", () => toTop.classList.toggle("show", window.scrollY > 600), { passive: true });
 toTop.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
+
+/* 顶栏高度自适应：快跳条换行变高时，锚点偏移跟随 */
+const _topbar = document.querySelector(".topbar");
+new ResizeObserver(() =>
+  document.documentElement.style.setProperty("--tbh", _topbar.offsetHeight + "px")
+).observe(_topbar);
 
 /* 启动 */
 (async () => {

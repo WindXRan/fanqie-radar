@@ -3,23 +3,27 @@ requires = ["setuptools>=69.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "fanqie-index-mcp"
-version = "0.1.0"
-description = "番茄小说榜单阅读 + 仿写选书评分 MCP 服务（stdio）。零爬虫依赖、零第三方运行时依赖。"
+name = "fanqie-radar"
+version = "0.2.0"
+description = "番茄雷达 Fanqie Radar — 番茄小说榜单数据 / 扫榜选书工作台 / MCP Server（fanqie novel rank data, webnovel trend analysis, imitation book scoring）。零配置、零爬虫、零第三方运行时依赖，内置示例数据装完即用。"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.10"
 dependencies = []
+keywords = ["fanqie", "番茄小说", "番茄", "榜单", "扫榜", "网文", "webnovel", "novel", "rank", "mcp", "mcp-server", "model-context-protocol", "data-analysis", "选书", "仿写"]
 
 [project.optional-dependencies]
 dev = ["pytest>=7.0"]
 
 [project.scripts]
-fanqie-index = "fanqie_index.mcp_server:main"
-fanqie-index-web = "fanqie_index.web:main"
+fanqie-radar = "fanqie_index.mcp_server:main"
+fanqie-radar-web = "fanqie_index.web:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+fanqie_index = ["sample_data/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -88,8 +88,7 @@ header.top { display: flex; align-items: center; justify-content: space-between;
 .active-bar .fchip b { font-weight: 700; margin-right: 4px; }
 
 /* ── 快跳条 ── */
-.cat-nav { display: flex; gap: 8px; overflow-x: auto; padding: 9px 20px; margin-top: 10px; background: rgba(255,255,255,.03); border: 1px solid var(--border); border-radius: 13px; scrollbar-width: none; mask-image: linear-gradient(90deg, transparent 0, #000 18px, #000 calc(100% - 18px), transparent 100%); }
-.cat-nav::-webkit-scrollbar { display: none; }
+.cat-nav { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 20px; margin-top: 10px; background: rgba(255,255,255,.03); border: 1px solid var(--border); border-radius: 13px; }
 .cat-nav[hidden] { display: none; }
 .cn-chip { flex-shrink: 0; border: 1px solid var(--border); background: rgba(255,255,255,.04); color: var(--text-dim); font-size: 12.5px; padding: 5px 12px; border-radius: 999px; cursor: pointer; transition: .15s; }
 .cn-chip span { opacity: .55; margin-left: 5px; font-size: 11px; }
@@ -98,7 +97,7 @@ header.top { display: flex; align-items: center; justify-content: space-between;
 
 /* ── 主区书卡流（全宽三列） ── */
 .book-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 13px; }
-.cat-sec { scroll-margin-top: 178px; margin-bottom: 24px; }
+.cat-sec { scroll-margin-top: calc(var(--tbh, 178px) + 10px); margin-bottom: 24px; }
 .sec-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; padding-left: 2px; }
 .sec-head::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(167,139,250,.35), transparent 80%); margin-left: 6px; }
 .sec-cat { font-size: 16px; font-weight: 800; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
