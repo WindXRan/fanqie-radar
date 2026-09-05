@@ -74,6 +74,7 @@ function groupByCat(items) {
 function anchorId(cat) { return "sec-" + encodeURIComponent(cat); }
 
 async function renderGrid() {
+  renderActiveBar();
   const box = document.getElementById("sections");
   box.innerHTML = `<div class="book-grid">${skeletonHTML(6)}</div>`;
   const params = { sort: state.sort, top: 300 };
@@ -172,6 +173,19 @@ function renderCandidates() {
     const meta = window._candIndex?.[bid] || {};
     return `<div class="c-item"><span class="c-name lnk" data-bid="${esc(bid)}" title="${esc(meta.title ? meta.title + " · " + bid : bid)}">${esc(meta.title || bid)}</span><button class="c-x" data-bid="${esc(bid)}">✕</button></div>`;
   }).join("");
+}
+
+/* 过滤态回显：主区顶部的可撤销 chips（搜索/热词/品类/状态/在读），点了抽屉里的筛选后主界面有迹可循 */
+function renderActiveBar() {
+  const bar = document.getElementById("activeBar");
+  const chips = [];
+  if (state.q) chips.push(["q", `搜索「${state.q}」`]);
+  if (state.trope) chips.push(["trope", `热词「${state.trope}」`]);
+  if (state.category) chips.push(["category", `品类「${state.category}」`]);
+  if (state.status) chips.push(["status", state.status === "done" ? "完结" : "连载中"]);
+  if (state.min_reads) chips.push(["min_reads", `≥${state.min_reads / 10000}万在读`]);
+  bar.hidden = !chips.length;
+  bar.innerHTML = chips.map(([k, label]) => `<button class="fchip" data-clear="${k}"><b>✕</b>${esc(label)}</button>`).join("");
 }
 
 /* ── 广告位（可自定义：放 web/ads.json 即覆盖默认） ── */
@@ -328,14 +342,14 @@ document.addEventListener("click", ev => {
     const tw = w.dataset.trope;
     state.trope = state.trope === tw ? "" : tw;
     document.querySelectorAll(".cloud .w").forEach(x => x.classList.toggle("on", x.dataset.trope === state.trope));
-    renderGrid(); return;
+    renderGrid(); closeDrawer(); return; // 点热词即进搜索，收起抽屉让结果可见
   }
   const br = ev.target.closest(".bar-row");
   if (br) {
     const cat = state.category === br.dataset.cat ? "" : br.dataset.cat;
     state.category = cat;
     document.getElementById("catSel").value = cat;
-    renderGrid(); renderHeat(); return;
+    renderGrid(); renderHeat(); closeDrawer(); return;
   }
   const cn = ev.target.closest(".cn-chip");
   if (cn) {
@@ -349,6 +363,8 @@ document.addEventListener("click", ev => {
     state[k] = k === "min_reads" ? 0 : "";
     document.querySelectorAll(`#chips .chip[data-f="${k}"]`).forEach(x => x.classList.remove("on"));
     if (k === "category") document.getElementById("catSel").value = "";
+    if (k === "q") document.getElementById("searchBox").value = "";
+    if (k === "trope") document.querySelectorAll(".cloud .w.on").forEach(x => x.classList.remove("on"));
     renderGrid(); if (k === "category") renderHeat();
     return;
   }

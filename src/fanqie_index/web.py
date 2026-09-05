@@ -212,7 +212,9 @@ def _api_books(q: dict) -> dict:
         books = [b for b in books if (b.get("reads") or 0) >= min_reads]
     trope = (q.get("trope") or "").strip()
     if trope:
-        books = [b for b in books if trope in (b.get("intro") or "")]
+        # 热词按书名统计（/api/hotwords），这里也按书名过滤，口径一致；原先匹配简介，
+        # 导致点击热词后经常搜出 0 本（书名含该词的书简介未必含）
+        books = [b for b in books if trope in (b.get("title") or "")]
     sort = q.get("sort", "reads")
     if sort == "pos":
         books.sort(key=lambda b: b.get("rank_pos") or 9999)
