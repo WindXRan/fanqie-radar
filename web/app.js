@@ -374,6 +374,89 @@ document.addEventListener("keydown", e => {
   if (e.key === "Escape") { mask.hidden = true; if (!drawer.hidden) closeDrawer(); }
 });
 
+/* ── 扫榜面板：一键采集 ── */
+const scrapeMask = document.getElementById("scrapeMask");
+const scrapeProgress = document.getElementById("scrapeProgress");
+const scrapeLogs = document.getElementById("scrapeLogs");
+const scrapeRunBtn = document.getElementById("scrapeRun");
+let _scrapePoll = null;
+
+document.getElementById("scrapeBtn").addEventListener("click", () => scrapeMask.hidden = false);
+document.getElementById("scrapeClose").addEventListener("click", () => scrapeMask.hidden = true);
+scrapeMask.addEventListener("click", e => { if (e.target === scrapeMask) scrapeMask.hidden = true; });
+
+scrapeRunBtn.addEventListener("click", async () => {
+  const gender = document.getElementById("scrapeGender").value;
+  const rank = document.getElementById("scrapeRank").value;
+  const limit = document.getElementById("scrapeLimit").value;
+  const sleep = document.getElementById("scrapeSleep").value;
+
+  scrapeRunBtn.disabled = true;
+  scrapeRunBtn.textContent = "采集中…";
+  scrapeProgress.hidden = false;
+  scrapeLogs.innerHTML = "";
+
+  try {
+    const r = await fetch("/api/scrape", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ gender, rank, limit: Number(limit), sleep: Number(sleep) }),
+    });
+    const d = await r.json();
+    if (!r.ok) {
+      scrapeLogs.innerHTML = `<div class="scrape-err">${esc(d.error || "启动失败")}</div>`;
+      scrapeRunBtn.disabled = false;
+      scrapeRunBtn.textContent = "🚀 开始采集";
+      return;
+    }
+  } catch (e) {
+    scrapeLogs.innerHTML = `<div class="scrape-err">请求失败: ${esc(e.message)}</div>`;
+    scrapeRunBtn.disabled = false;
+    scrapeRunBtn.textContent = "🚀 开始采集";
+    return;
+  }
+
+  // 轮询进度
+  let lastCount = 0;
+  _scrapePoll = setInterval(async () => {
+    try {
+      const r = await fetch("/api/scrape/status");
+      const d = await r.json();
+      const logs = d.logs || [];
+      if (logs.length > lastCount) {
+        const newLogs = logs.slice(lastCount);
+        for (const msg of newLogs) {
+          const div = document.createElement("div");
+          div.textContent = msg;
+          div.className = msg.includes("✗") ? "scrape-log-err" : msg.includes("✓") ? "scrape-log-ok" : "scrape-log-line";
+          scrapeLogs.appendChild(div);
+        }
+        scrapeLogs.scrollTop = scrapeLogs.scrollHeight;
+        lastCount = logs.length;
+      }
+      // 进度条估算
+      const fill = document.getElementById("scrapeProgressFill");
+      if (d.running) {
+        fill.style.width = "100%";
+        fill.classList.add("indeterminate");
+      } else {
+        fill.classList.remove("indeterminate");
+        fill.style.width = "100%";
+        clearInterval(_scrapePoll);
+        _scrapePoll = null;
+        scrapeRunBtn.disabled = false;
+        scrapeRunBtn.textContent = "🚀 开始采集";
+        if (d.error) {
+          scrapeLogs.appendChild(Object.assign(document.createElement("div"), { textContent: "✗ " + d.error, className: "scrape-log-err" }));
+        } else {
+          scrapeLogs.appendChild(Object.assign(document.createElement("div"), { textContent: "✓ 采集完成！正在刷新看板…", className: "scrape-log-ok" }));
+          setTimeout(() => { refresh(); scrapeMask.hidden = true; }, 1500);
+        }
+      }
+    } catch (e) { /* 忽略轮询错误 */ }
+  }, 1500);
+});
+
 /* 回到顶部 */
 const toTop = document.getElementById("toTop");
 window.addEventListener("scroll", () => toTop.classList.toggle("show", window.scrollY > 600), { passive: true });

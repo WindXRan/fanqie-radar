@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import threading
+import time
 from functools import partial
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
@@ -231,6 +233,57 @@ def _api_books(q: dict) -> dict:
     return {"count": len(items), "items": items}
 
 
+# ── 扫榜采集状态管理 ──────────────────────────────────────────────
+_SCRAPE_STATE = {
+    "running": False,
+    "logs": [],
+    "started_at": 0,
+    "finished_at": 0,
+    "error": "",
+}
+_SCRAPE_LOCK = threading.Lock()
+
+
+def _scrape_thread(limit, sleep_sec, gender, rank):
+    """后台采集线程。"""
+    try:
+        from . import scraper as SCR
+        SCR._OUTPUT_DIR = Path.cwd() / "data"
+
+        def on_log(msg):
+            with _SCRAPE_LOCK:
+                _SCRAPE_STATE["logs"].append(msg)
+
+        SCR.run_scraper(
+            limit=limit, sleep_sec=sleep_sec,
+            gender_filter=gender, rank_filter=rank,
+            on_log=on_log,
+        )
+    except Exception as e:
+        with _SCRAPE_LOCK:
+            _SCRAPE_STATE["error"] = f"{type(e).__name__}: {e}"
+            _SCRAPE_STATE["logs"].append(f"✗ 错误: {e}")
+    finally:
+        with _SCRAPE_LOCK:
+            _SCRAPE_STATE["running"] = False
+            _SCRAPE_STATE["finished_at"] = time.time()
+            # 重建书目索引以加载新数据
+            global _BOOK_IDX_BUILT
+            _BOOK_IDX_BUILT = False
+
+
+def _api_scrape_status(q: dict) -> dict:
+    with _SCRAPE_LOCK:
+        return {
+            "running": _SCRAPE_STATE["running"],
+            "logs": _SCRAPE_STATE["logs"][-50:],
+            "log_count": len(_SCRAPE_STATE["logs"]),
+            "started_at": _SCRAPE_STATE["started_at"],
+            "finished_at": _SCRAPE_STATE["finished_at"],
+            "error": _SCRAPE_STATE["error"],
+        }
+
+
 _ROUTES = {
     "/api/meta": _api_meta,
     "/api/ranks": _api_ranks,
@@ -241,6 +294,7 @@ _ROUTES = {
     "/api/hotwords": _api_hotwords,
     "/api/book": _api_book,
     "/api/books": _api_books,
+    "/api/scrape/status": _api_scrape_status,
 }
 
 
@@ -273,6 +327,43 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, out.encode("utf-8"))
             return self._send(404, b'{"error":"not found"}')
         except Exception as e:  # 不让单请求异常拖垮 server
+            self._send(500, json.dumps({"error": f"{type(e).__name__}: {e}"}).encode("utf-8"))
+
+    def do_POST(self):
+        parsed = urlparse(self.path)
+        path = parsed.path
+        try:
+            if path == "/api/scrape":
+                # 检查是否已在运行
+                with _SCRAPE_LOCK:
+                    if _SCRAPE_STATE["running"]:
+                        return self._send(409, '{"error":"已有采集任务在运行"}'.encode("utf-8"))
+                    # 重置状态
+                    _SCRAPE_STATE["running"] = True
+                    _SCRAPE_STATE["logs"] = []
+                    _SCRAPE_STATE["error"] = ""
+                    _SCRAPE_STATE["started_at"] = time.time()
+                    _SCRAPE_STATE["finished_at"] = 0
+
+                # 解析请求体
+                body = self.rfile.read(int(self.headers.get("Content-Length", 0)))
+                params = json.loads(body) if body else {}
+                limit = int(params.get("limit", 30))
+                sleep_sec = float(params.get("sleep", 5))
+                gender = params.get("gender", "")
+                rank = params.get("rank", "")
+
+                # 启动后台线程
+                t = threading.Thread(
+                    target=_scrape_thread,
+                    args=(limit, sleep_sec, gender, rank),
+                    daemon=True,
+                )
+                t.start()
+                return self._send(200, '{"ok":true,"msg":"采集已启动"}'.encode("utf-8"))
+
+            return self._send(404, b'{"error":"not found"}')
+        except Exception as e:
             self._send(500, json.dumps({"error": f"{type(e).__name__}: {e}"}).encode("utf-8"))
 
     def _static(self, rel: str):
