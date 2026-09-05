@@ -188,6 +188,56 @@ a.ad-title:hover { color: var(--accent); }
 
 .foot { text-align: center; color: var(--text-faint); font-size: 12px; margin-top: 34px; }
 
+/* ── 观感打磨 ── */
+/* 背景细网格质感 */
+body::after {
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background-image: linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, #000 30%, transparent 100%);
+}
+/* 全局细滚动条 */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: rgba(167,139,250,.22); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(167,139,250,.4); }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* 骨架屏 shimmer */
+.sk { background: linear-gradient(90deg, rgba(255,255,255,.04) 25%, rgba(255,255,255,.09) 37%, rgba(255,255,255,.04) 63%); background-size: 400% 100%; animation: shimmer 1.2s linear infinite; border-radius: 6px; }
+@keyframes shimmer { from { background-position: 100% 0 } to { background-position: 0 0 } }
+.bcard.skel { pointer-events: none; }
+
+/* 卡片入场 stagger + hover 微交互 */
+.bcard:not(.skel) { animation: rise .4s cubic-bezier(.22,1,.36,1) both; animation-delay: calc(var(--i, 0) * 30ms); }
+@keyframes rise { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: none } }
+.bcard { transition: transform .2s, border-color .2s, box-shadow .25s; }
+.bcard:hover { border-color: rgba(167,139,250,.38); box-shadow: 0 14px 38px rgba(167,139,250,.14); }
+.cover img { transition: transform .45s cubic-bezier(.22,1,.36,1); }
+.bcard:hover .cover img, .modal .cover img:hover { transform: scale(1.07); }
+
+/* 在读量级分色：50万+ 金 / 10万+ 紫 / 其余暗 */
+.breads.t1 { background: linear-gradient(135deg, #fde68a, #f59e0b); }
+.breads.t2 { background: var(--grad); }
+.breads.t3 { background: linear-gradient(135deg, #8b98b3, #6b7794); }
+
+/* 分组标题装饰线 */
+.sec-head::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(167,139,250,.35), transparent 80%); margin-left: 6px; }
+
+/* 弹窗入场 */
+.modal { animation: pop .28s cubic-bezier(.22,1,.36,1) both; }
+.modal-mask { animation: fade .2s both; }
+@keyframes pop { from { opacity: 0; transform: scale(.94) translateY(12px) } to { opacity: 1; transform: none } }
+@keyframes fade { from { opacity: 0 } to { opacity: 1 } }
+
+/* 回到顶部 */
+#toTop { position: fixed; right: 26px; bottom: 26px; z-index: 40; width: 44px; height: 44px; border-radius: 14px; border: 1px solid var(--border-strong); background: var(--panel-solid); color: var(--text-dim); font-size: 17px; cursor: pointer; opacity: 0; pointer-events: none; transform: translateY(10px); transition: .25s; box-shadow: var(--shadow); }
+#toTop.show { opacity: 1; pointer-events: auto; transform: none; }
+#toTop:hover { background: var(--grad); color: #0a0e17; border-color: transparent; }
+
+/* 快跳条两侧渐隐 */
+.cat-nav { mask-image: linear-gradient(90deg, transparent 0, #000 18px, #000 calc(100% - 18px), transparent 100%); padding-left: 20px; padding-right: 20px; }
+
 @media (max-width: 1000px) {
   .workbench { grid-template-columns: 1fr; }
   .side-col { position: static; }

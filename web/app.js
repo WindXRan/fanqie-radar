@@ -31,19 +31,31 @@ function badgeHTML(b) {
   if (b.trope_hits >= 5) h += `<span class="badge trope">套路×${b.trope_hits}</span>`;
   return h ? `<div class="bbadges">${h}</div>` : "";
 }
-function cardHTML(b) {
+function cardHTML(b, i = 0) {
   const starred = candidates.includes(b.book_id);
-  return `<div class="bcard${starred ? " starred" : ""}" data-bid="${esc(b.book_id)}">
+  const tier = b.reads >= 5e5 ? "t1" : b.reads >= 1e5 ? "t2" : "t3";
+  return `<div class="bcard${starred ? " starred" : ""}" data-bid="${esc(b.book_id)}" style="--i:${i % 10}">
     ${coverHTML(b, "bcover")}
     <div class="bbody">
       <div class="btitle lnk" data-bid="${esc(b.book_id)}" title="${esc(b.title)}">${esc(b.title)}</div>
       <div class="bmeta">${esc(b.author || "—")} · ${esc(b.category || "—")}</div>
-      <div><span class="breads">${fmtReads(b.reads)}<span class="u">在读</span></span></div>
+      <div><span class="breads ${tier}">${fmtReads(b.reads)}<span class="u">在读</span></span></div>
       ${badgeHTML(b)}
       <div class="bintro lnk" data-bid="${esc(b.book_id)}" title="点击看完整简介">${esc(b.intro_preview || "")}</div>
     </div>
     <button class="star${starred ? " on" : ""}" data-bid="${esc(b.book_id)}" title="收藏候选">${starred ? "★" : "☆"}</button>
   </div>`;
+}
+function skeletonHTML(n = 6) {
+  return Array(n).fill(0).map(() => `<div class="bcard skel">
+    <div class="cover bcover"><div class="sk" style="position:absolute;inset:0"></div></div>
+    <div class="bbody">
+      <div class="sk" style="height:15px;width:72%"></div>
+      <div class="sk" style="height:11px;width:42%"></div>
+      <div class="sk" style="height:20px;width:34%"></div>
+      <div class="sk" style="height:11px;width:88%"></div>
+      <div class="sk" style="height:11px;width:64%"></div>
+    </div></div>`).join("");
 }
 
 /* ── 主网格：品类分组 + 快速跳转（md TOC 感） ── */
@@ -62,6 +74,8 @@ function groupByCat(items) {
 function anchorId(cat) { return "sec-" + encodeURIComponent(cat); }
 
 async function renderGrid() {
+  const box = document.getElementById("sections");
+  box.innerHTML = `<div class="book-grid">${skeletonHTML(6)}</div>`;
   const params = { sort: state.sort, top: 300 };
   if (state.q) params.q = state.q;
   if (state.category) params.category = state.category;
@@ -69,7 +83,6 @@ async function renderGrid() {
   if (state.min_reads) params.min_reads = state.min_reads;
   if (state.trope) params.trope = state.trope;
   const d = await api("books", params);
-  const box = document.getElementById("sections");
   const nav = document.getElementById("catNav");
   if (!d.count) {
     box.innerHTML = `<div class="empty" style="padding:40px 0">没有匹配的书，放宽筛选试试</div>`;
@@ -85,7 +98,7 @@ async function renderGrid() {
   box.innerHTML = groups.map(g => `
     <div class="cat-sec" id="${anchorId(g.cat)}">
       <div class="sec-head"><span class="sec-cat">${esc(g.cat)}</span><span class="sec-n">${g.books.length} 本</span></div>
-      <div class="book-grid">${g.books.map(cardHTML).join("")}</div>
+      <div class="book-grid">${g.books.map((b, i) => cardHTML(b, i)).join("")}</div>
     </div>`).join("");
   // scroll spy
   if (_catObs) _catObs.disconnect();
@@ -295,6 +308,11 @@ document.addEventListener("click", ev => {
   if (ev.target === mask || ev.target.id === "mClose") mask.hidden = true;
 });
 document.addEventListener("keydown", e => { if (e.key === "Escape") mask.hidden = true; });
+
+/* 回到顶部 */
+const toTop = document.getElementById("toTop");
+window.addEventListener("scroll", () => toTop.classList.toggle("show", window.scrollY > 600), { passive: true });
+toTop.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
 
 /* 启动 */
 (async () => {
