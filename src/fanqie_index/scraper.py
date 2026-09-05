@@ -176,7 +176,7 @@ def _extract_books(state: dict) -> list[dict]:
     return books
 
 
-def _normalize_book(b: dict) -> dict:
+def _normalize_book(b: dict, category: str = "") -> dict:
     """从 __INITIAL_STATE__ 的原始书目数据归一化为快照格式。"""
     def get(*keys):
         for k in keys:
@@ -186,16 +186,20 @@ def _normalize_book(b: dict) -> dict:
 
     title = decode_text(str(get("book_name", "bookName", "title")))
     author = decode_text(str(get("author", "author_name", "authorName")))
-    raw_reads = str(get("reading_count", "readingCount", "reads", "read_count"))
+    raw_reads = str(get("reading_count", "readingCount", "reads", "read_count", "readCount"))
     reads = decode_text(raw_reads)
     intro = decode_text(str(get("abstract", "intro", "description", "brief")))
-    cover = str(get("cover_url", "coverUrl", "cover", "thumb_url", "thumbUrl"))
+    cover = str(get("thumbUri", "thumb_uri", "cover_url", "coverUrl", "cover"))
     bid = str(get("book_id", "bookId"))
     url = str(get("url", "page_url", "pageUrl"))
     if not url and bid:
         url = f"https://fanqienovel.com/page/{bid}"
     if not bid:
         bid = _extract_bookid(url)
+
+    # creationStatus: 0=完结, 1=连载中
+    cs = str(get("creationStatus", "creation_status"))
+    status = "完结" if cs == "0" else "连载中" if cs == "1" else ""
 
     return {
         "title": title,
@@ -205,6 +209,8 @@ def _normalize_book(b: dict) -> dict:
         "cover": cover,
         "url": url,
         "bookid": bid,
+        "status": status,
+        "category": category,
     }
 
 
@@ -290,18 +296,16 @@ def _scrape_rank_type(rank_config, limit=30, sleep_sec=1, on_log=None):
     # 如果初始页面有书籍且分类列表只有一个或没有分类列表，直接用初始数据
     if init_books and not categories:
         cat_name = "全部"
-        books = [_normalize_book(b) for b in init_books[:limit]]
+        books = [_normalize_book(b, cat_name) for b in init_books[:limit]]
         all_categories.append({"name": cat_name, "books": books})
         log(f"  {cat_name}: {len(books)} 本")
     elif init_books and categories:
-        # 初始页面的书籍属于第一个分类
         first_cat = categories[0]
-        books = [_normalize_book(b) for b in init_books[:limit]]
+        books = [_normalize_book(b, first_cat["name"]) for b in init_books[:limit]]
         all_categories.append({"name": first_cat["name"], "books": books})
         log(f"[{_ts()}] {rank_name} (1/{len(categories)}) {first_cat['name']}")
         log(f"  {first_cat['name']}: {len(books)} 本")
 
-        # 遍历剩余分类
         for ci, cat in enumerate(categories[1:], 2):
             cat_name = cat["name"]
             cat_id = cat["id"]
@@ -329,7 +333,7 @@ def _scrape_rank_type(rank_config, limit=30, sleep_sec=1, on_log=None):
                 time.sleep(sleep_sec)
                 continue
 
-            books = [_normalize_book(b) for b in cat_books_raw[:limit]]
+            books = [_normalize_book(b, cat_name) for b in cat_books_raw[:limit]]
             all_categories.append({"name": cat_name, "books": books})
             log(f"  {cat_name}: {len(books)} 本")
             time.sleep(sleep_sec)
