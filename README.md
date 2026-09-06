@@ -1,13 +1,13 @@
 # 番茄雷达 Fanqie Radar
 
-> 番茄小说榜单 · 扫榜选书工作台 · MCP Server —— 复制一个「懂网文选书的 AI 编辑」到你的写作工作流
-> 零配置、零第三方运行时依赖，纯 Python 标准库。**开箱自带当天完整真实榜单快照（女频/男频 × 阅读榜/新书榜，730+ 本书）**，内置极速扫榜采集器，克隆即用。
+> 番茄小说榜单 · 扫榜选书工作台 · MCP Server · 开源 Agent Skill —— 复制一个「懂网文选书的 AI 编辑」到你的写作工作流
+> 零配置、零第三方运行时依赖，纯 Python 标准库。**开箱自带当天完整真实榜单快照（女频/男频 × 阅读榜/新书榜，730+ 本书）**，内置极速扫榜采集器，克隆即用；一键安装为 Agent Skill（Claude Code / Codex / Cursor / Trae）。
 
-在 Claude / Cursor / WorkBuddy / 任意 MCP 客户端里直接问「现在女频什么火」「这本适合仿写吗」「豪门总裁赛道最近什么套路吃香」，它就答。也可以打开自带的可视化看板，像人一样翻封面、扫书名、看在读、收藏候选、追题材热度。
+在 Claude Code / Cursor / WorkBuddy / 任意 MCP 客户端里直接问「现在女频什么火」「这本适合仿写吗」「豪门总裁赛道最近什么套路吃香」，它就答。也可以打开自带的可视化看板，像人一样翻封面、扫书名、看在读、收藏候选、追题材热度。
 
 ![看板](docs/screenshot.jpg)
 
-**关键词**：番茄小说 · 番茄榜单 · 扫榜 · 网文数据 · 网文选题 · 题材热度 · 仿写选书 · AI 写作 · MCP · Model Context Protocol · MCP Server · 数据看板
+**关键词**：番茄小说 · 番茄榜单 · 扫榜 · 网文数据 · 网文选题 · 题材热度 · 仿写选书 · AI 写作 · AI 网文写作 · 网文工具包 · MCP · Model Context Protocol · MCP Server · Agent Skill · Claude Code · Codex · 数据看板 · data analysis · webnovel
 
 ---
 
