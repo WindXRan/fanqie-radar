@@ -105,9 +105,23 @@ fanqie-radar-scrape --limit 30 --sleep 1  # 控制每分类上限和间隔（秒
 
 **Cursor / 其他**：同样指向 `fanqie-radar` 命令（或 `python -m fanqie_index.mcp_server`）。多目录用 `;` 分隔（Windows）/ `:`（Linux/macOS）。
 
-### 5. Agent Skill（WorkBuddy / Claude 等智能体一键接入）
+### 5. Agent Skill（Claude Code / Cursor / Trae 等智能体一键接入）
 
-本仓库自带 Agent Skill（`skills/fanqie-radar/SKILL.md`）：智能体用户把该目录装进技能库，即可让 AI 自动启动服务、调用 API/工具，**同样零配置**。
+本仓库自带 Agent Skill（`skills/fanqie-radar/SKILL.md`），让 AI 自动启动服务、调用 API/工具，**同样零配置**。
+
+**一键安装（推荐）**：
+
+```bash
+pip install .                       # 装好自带 fanqie-radar-skill-install 命令
+fanqie-radar-skill-install          # 交互式：选客户端 + 范围，一键装进技能库
+# 常用：
+fanqie-radar-skill-install --agent claude-code --global   # 装到 Claude Code 全局
+fanqie-radar-skill-install --agent all --global           # 装到所有 8 个客户端
+fanqie-radar-skill-install --agent cursor --local         # 仅装到当前项目
+fanqie-radar-skill-install --list                         # 先看仓库内置了哪些
+```
+
+支持 Claude Code / Cursor / Trae / GitHub Copilot / Cline / Gemini CLI / Codex / OpenCode（`--agent all` 一次全装）。装完**重启客户端**生效。
 
 ---
 

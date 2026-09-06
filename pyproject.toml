@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fanqie-radar"
-version = "0.2.0"
-description = "番茄雷达 Fanqie Radar — 番茄小说榜单数据 / 扫榜选书工作台 / MCP Server（fanqie novel rank data, webnovel trend analysis, imitation book scoring）。零配置、零爬虫、零第三方运行时依赖，内置示例数据装完即用。"
+version = "0.2.1"
+description = "番茄雷达 Fanqie Radar — 番茄小说榜单数据 / 扫榜选书工作台 / MCP Server（fanqie novel rank data, webnovel trend analysis, imitation book scoring）。零配置、零爬虫、零第三方运行时依赖，内置当天公开榜单真实快照装完即用，附极速一键扫榜与一键安装 Agent Skill。"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.10"
@@ -19,6 +19,7 @@ dev = ["pytest>=7.0"]
 fanqie-radar = "fanqie_index.mcp_server:main"
 fanqie-radar-web = "fanqie_index.web:main"
 fanqie-radar-scrape = "fanqie_index.scraper:main"
+fanqie-radar-skill-install = "fanqie_index.install_skill:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

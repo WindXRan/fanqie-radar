@@ -33,9 +33,10 @@ def test_load_snapshots():
 
 
 def test_find():
+    # 真实快照含「惹金枝/攀高枝/枝上蘅」等，查「金枝」至少命中一条且 book_id 可寻址
     rows = S.find("金枝")
     assert len(rows) >= 1
-    assert rows[0]["book_id"] == "1000000004"
+    assert all(r.get("book_id") for r in rows)
 
 
 def test_parse_reads():
@@ -70,11 +71,14 @@ def test_category_heat():
 
 
 def test_cross_signal():
-    new_b = S.all_books(rank_type="new", gender="female")
-    read_b = S.all_books(rank_type="read", gender="female")
+    # 用内存构造同书出现在新书榜+阅读榜的场景，验证跨榜信号正确
+    new_b = [{"title": "A", "book_id": "11", "reads": "10000", "category": "c"},
+             {"title": "独书", "book_id": "22", "reads": "50", "category": "c"}]
+    read_b = [{"title": "A", "book_id": "11", "reads": "300000", "category": "c"},
+              {"title": "B", "book_id": "33", "reads": "99999", "category": "c"}]
     cross = AN.cross_signal(new_b, read_b)
-    # 新书榜里有 逆袭：前夫跪求复合 也在阅读榜
-    assert any(c["title"].startswith("逆袭") for c in cross)
+    assert [c["title"] for c in cross] == ["A"]
+    assert cross[0]["read_reads"] == 300000 and cross[0]["new_reads"] == 10000
 
 
 def test_hotwords():
@@ -84,18 +88,21 @@ def test_hotwords():
 
 
 def test_trend():
-    now = S.all_books(rank_type="read", gender="female",
-                      file="fanqie_female_read_ranks_20260905.json")
-    prev = S.all_books(rank_type="read", gender="female",
-                       file="fanqie_female_read_ranks_20260904.json")
+    # 仓库内置为单日真实快照，趋势差分用内存构造两份数据验证：进/出/排名变化三路
+    now = [
+        {"title": "新书A", "book_id": "1", "reads": "100"},
+        {"title": "仍在榜B", "book_id": "2", "reads": "300"},
+    ]
+    prev = [
+        {"title": "仍在榜B", "book_id": "2", "reads": "200"},
+        {"title": "掉出书C", "book_id": "3", "reads": "50"},
+    ]
     t = AN.trend(now, prev)
-    # 京圈公主抢我男友 在第1天数据、第2天掉出 → dropped 应含它
-    dropped_titles = [d["title"] for d in t["dropped"]]
-    assert any("京圈" in tt for tt in dropped_titles)
-    # 逆袭：前夫跪求复合 第2天新进 → entered 应含它
-    entered_titles = [e["title"] for e in t["entered"]]
-    assert any("逆袭" in tt for tt in entered_titles)
-    assert t["summary"]["now_count"] == len(now)
+    assert [e["title"] for e in t["entered"]] == ["新书A"]
+    assert [d["title"] for d in t["dropped"]] == ["掉出书C"]
+    m = t["moved"][0]
+    assert m["title"] == "仍在榜B" and m["delta_pos"] == -1 and m["delta_reads"] == 100
+    assert t["summary"]["now_count"] == 2
 
 
 def test_stats():
