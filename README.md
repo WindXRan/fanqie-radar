@@ -111,6 +111,15 @@ fanqie-radar-scrape --limit 30 --sleep 1  # 控制每分类上限和间隔（秒
 
 **一键安装（推荐）**：
 
+方式一 · 生态标准 `npx skills`（复制命令即可，已实测验证）：
+
+```bash
+npx skills add WindXRan/fanqie-radar --skill fanqie-radar --agent claude-code codex --global --yes --copy
+#                                                                    ↑ 可换 cursor / trae / etc，多个用空格分隔
+```
+
+方式二 · 自带 CLI（零依赖、纯标准库）：
+
 ```bash
 pip install .                       # 装好自带 fanqie-radar-skill-install 命令
 fanqie-radar-skill-install          # 交互式：选客户端 + 范围，一键装进技能库
@@ -121,7 +130,7 @@ fanqie-radar-skill-install --agent cursor --local         # 仅装到当前项�
 fanqie-radar-skill-install --list                         # 先看仓库内置了哪些
 ```
 
-支持 Claude Code / Cursor / Trae / GitHub Copilot / Cline / Gemini CLI / Codex / OpenCode（`--agent all` 一次全装）。装完**重启客户端**生效。
+`npx skills` 支持 Claude Code / Cursor / Codex / Trae 等主流客户端（`--agent` 可多选，用空格分隔）；自带 CLI 支持 Claude Code / Cursor / Trae / GitHub Copilot / Cline / Gemini CLI / Codex / OpenCode（`--agent all` 一次全装）。装完**重启客户端**生效。
 
 ---
 
